@@ -1,0 +1,18 @@
+# Convenience compose file for the Operations Console.
+#   docker compose up --build
+#   open http://localhost:8080
+
+services:
+  ops-console:
+    build: .
+    image: ops-console:latest
+    container_name: ops-console
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistent wallpaper uploads (survives container rebuilds)
+      - ops-wallpapers:/app/data/wallpapers
+    restart: unless-stopped
+
+volumes:
+  ops-wallpapers:

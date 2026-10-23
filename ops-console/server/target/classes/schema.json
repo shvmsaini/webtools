@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Operations Bundle",
+  "type": "object",
+  "properties": {
+    "version": { "type": "string" },
+    "fetchedAt": { "type": "string", "format": "date-time" },
+    "featureFlags": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/FeatureFlagOverride" }
+    },
+    "withdrawnMedia": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/MediaWithdrawal" }
+    },
+    "settings": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/AppSetting" }
+    },
+    "webviewExperiences": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/WebExperience" }
+    },
+    "notifications": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/NotificationPayload" }
+    },
+    "themes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/ThemePayload" }
+    },
+    "wallpapers": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/Wallpaper" }
+    }
+  },
+  "definitions": {
+    "Targeting": {
+      "type": "object",
+      "properties": {
+        "audience": { "type": "string", "enum": ["ALL", "FIRST", "BUSINESS", "ECONOMY"] },
+        "languages": { "type": "array", "items": { "type": "string" } },
+        "seatNumbers": { "type": "array", "items": { "type": "string" } },
+        "minAppVersion": { "type": ["string", "null"] }
+      }
+    },
+    "Schedule": {
+      "type": "object",
+      "properties": {
+        "start": { "type": ["string", "null"] },
+        "end": { "type": ["string", "null"] }
+      }
+    },
+    "Display": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string", "enum": ["MODAL", "FULL_SCREEN"] },
+        "showHeader": { "type": "boolean" },
+        "showCloseButton": { "type": "boolean" },
+        "width": { "type": "string" },
+        "height": { "type": "string" }
+      }
+    },
+    "NotificationPayload": {
+      "type": "object",
+      "required": ["id", "title", "channel", "createdAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "iconUrl": { "type": ["string", "null"] },
+        "ctaUrl": { "type": ["string", "null"] },
+        "autoOpen": { "type": "boolean" },
+        "mandatory": { "type": "boolean" },
+        "channel": { "type": "string", "enum": ["POLL", "MQTT_PUSH", "WEBHOOK"] },
+        "targeting": { "$ref": "#/definitions/Targeting" },
+        "expiresAt": { "type": ["string", "null"] },
+        "createdAt": { "type": "string" },
+        "createdBy": { "type": ["string", "null"] },
+        "category": {
+          "type": "string",
+          "enum": ["OPERATIONAL", "GATE_CHANGE", "WEATHER", "ADVISORY", "ANNOUNCEMENT", "PROMOTION", "CHAIRMAN_MESSAGE"]
+        }
+      }
+    },
+    "WebExperience": {
+      "type": "object",
+      "required": ["id", "title", "type", "url", "active", "targeting", "display", "metadata"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "type": {
+          "type": "string",
+          "enum": ["QUIZ", "SURVEY", "GAME", "CAMPAIGN", "DESTINATION_INFO", "PARTNER", "CUSTOM"]
+        },
+        "url": { "type": "string", "format": "uri" },
+        "iconUrl": { "type": ["string", "null"] },
+        "active": { "type": "boolean" },
+        "autoOpen": { "type": "boolean" },
+        "schedule": { "$ref": "#/definitions/Schedule" },
+        "targeting": { "$ref": "#/definitions/Targeting" },
+        "display": { "$ref": "#/definitions/Display" },
+        "metadata": { "type": "object", "additionalProperties": { "type": "string" } },
+        "pinnedToFooter": { "type": ["boolean", "null"] },
+        "footerPosition": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "FeatureFlagOverride": {
+      "type": "object",
+      "required": ["name", "enabled", "updatedAt"],
+      "properties": {
+        "name": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "expiresAt": { "type": ["string", "null"] },
+        "reason": { "type": ["string", "null"] },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": ["string", "null"] }
+      }
+    },
+    "MediaWithdrawal": {
+      "type": "object",
+      "required": ["mediaId", "withdrawnAt"],
+      "properties": {
+        "mediaId": { "type": "string" },
+        "reason": { "type": ["string", "null"] },
+        "expiresAt": { "type": ["string", "null"] },
+        "withdrawnAt": { "type": "string" }
+      }
+    },
+    "AppSetting": {
+      "type": "object",
+      "required": ["key", "value", "updatedAt"],
+      "properties": {
+        "key": { "type": "string" },
+        "value": {},
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": ["string", "null"] }
+      }
+    },
+    "ThemePayload": {
+      "type": "object",
+      "required": ["id", "label", "colorTokens", "updatedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "colorTokens": { "type": "object", "additionalProperties": { "type": "string" } },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": ["string", "null"] }
+      }
+    },
+    "Wallpaper": {
+      "type": "object",
+      "required": ["id", "label", "imageUrl", "active", "updatedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "active": { "type": "boolean" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

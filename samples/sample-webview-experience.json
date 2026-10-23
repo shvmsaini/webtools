@@ -1,0 +1,26 @@
+{
+  "id": "quiz-001",
+  "title": "Welcome Quiz",
+  "type": "QUIZ",
+  "url": "https://example.com/quiz",
+  "iconUrl": null,
+  "active": true,
+  "autoOpen": true,
+  "schedule": null,
+  "targeting": {
+    "audience": "ALL",
+    "languages": [],
+    "seatNumbers": [],
+    "minAppVersion": null
+  },
+  "display": {
+    "mode": "MODAL",
+    "showHeader": true,
+    "showCloseButton": true,
+    "width": "80%",
+    "height": "80%"
+  },
+  "metadata": {},
+  "pinnedToFooter": true,
+  "footerPosition": 4
+}

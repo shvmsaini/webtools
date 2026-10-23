@@ -1,0 +1,10 @@
+# Build outputs — don't ship into the image
+ops-console/target/
+ops-console-ui/dist/
+ops-console-ui/node_modules/
+
+# Data
+ops-console/data/
+
+# Dev
+**/.DS_Store

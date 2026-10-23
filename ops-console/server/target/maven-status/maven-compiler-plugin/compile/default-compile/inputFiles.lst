@@ -1,0 +1,13 @@
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/OpsConsoleApplication.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/config/WebConfig.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/store/WallpaperStore.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/web/WebViewController.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/store/InMemoryOpsStore.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/model/SearchAnalyticsEvent.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/store/SearchAnalyticsStore.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/web/ConfigController.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/web/SearchAnalyticsController.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/web/WallpaperController.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/model/DomainModels.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/web/NotificationController.java
+/Users/sainis/AndroidStudioProjects/leanback-android/webtools/ops-console/server/src/main/java/aero/panasonic/ek/ops/web/RootRedirectController.java

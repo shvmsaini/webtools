@@ -1,0 +1,20 @@
+{
+  "id": "welcome-002",
+  "title": "Welcome aboard",
+  "body": "Browse the seat-back screen to enjoy entertainment during your flight.",
+  "iconUrl": null,
+  "ctaUrl": null,
+  "autoOpen": true,
+  "mandatory": false,
+  "channel": "POLL",
+  "targeting": {
+    "audience": "ALL",
+    "languages": [],
+    "seatNumbers": [],
+    "minAppVersion": null
+  },
+  "expiresAt": null,
+  "createdAt": "2026-09-15T22:00:00Z",
+  "createdBy": "sample-script",
+  "category": "ANNOUNCEMENT"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "leanback-default",
+  "label": "Leanback Default",
+  "description": "Default Panasonic palette.",
+  "colorTokens": {
+    "primary": "#d71921",
+    "primaryDark": "#b91419",
+    "primaryLight": "#fef2f3",
+    "background": "#0a001a",
+    "surface": "#1e293b",
+    "textPrimary": "#f5f5f9",
+    "textMuted": "#bcb7c8",
+    "footerBackground": "#0a001a",
+    "footerItem": "#d71921"
+  },
+  "updatedAt": "2026-09-15T22:00:00Z",
+  "updatedBy": "sample-script"
+}
