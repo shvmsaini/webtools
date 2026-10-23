@@ -13,7 +13,7 @@ interface TextFieldProps {
     hint?: string;
     required?: boolean;
     full?: boolean;
-    type?: 'text' | 'url' | 'number';
+    type?: 'text' | 'url' | 'number' | 'datetime-local';
     placeholder?: string;
     maxLength?: number;
 }

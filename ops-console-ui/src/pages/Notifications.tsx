@@ -428,7 +428,7 @@ export function Notifications() {
                                     <TextField
                                         label="Created at"
                                         hint="auto-stamped on send"
-                                        value={draft.createdAt}
+                                        value={draft.createdAt ?? ''}
                                         onChange={(v) => setDraft({ ...draft, createdAt: v })}
                                         placeholder="ISO-8601"
                                     />
