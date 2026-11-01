@@ -1,0 +1,66 @@
+# =================================================================
+# Webtools (Ops Console) - Git ignore
+# =================================================================
+
+# ---- OS / editor cruft ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# ---- Maven (ops-console/server) ----
+ops-console/server/target/
+ops-console/server/.mvn/
+ops-console/server/mvnw
+ops-console/server/mvnw.cmd
+ops-console/server/*.log
+
+# ---- Node / Vite (ops-console-ui) ----
+ops-console-ui/node_modules/
+ops-console-ui/dist/
+ops-console-ui/.vite/
+ops-console-ui/.cache/
+ops-console-ui/coverage/
+ops-console-ui/*.log
+ops-console-ui/npm-debug.log*
+ops-console-ui/yarn-debug.log*
+ops-console-ui/yarn-error.log*
+ops-console-ui/.env
+ops-console-ui/.env.local
+ops-console-ui/.env.*.local
+
+# ---- Runtime data (DB, uploads, logs) ----
+ops-console/server/data/
+ops-console/data/
+*.db
+*.sqlite
+*.sqlite3
+logs/
+*.log
+
+# ---- Build / packaging outputs ----
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.tgz
+
+# ---- Gradle (in case any subproject uses it) ----
+.gradle/
+build/
+
+# ---- Local config ----
+local.properties
+.env
+.env.*
+!.env.example
+
+# ---- Docker / compose ----
+.docker-volumes/
