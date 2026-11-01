@@ -1,8 +1,11 @@
 /*
  * Copyright (c) 2024 Panasonic Avionics
  *
- * Remote Config page — feature flags, media withdrawals, runtime
- * app settings. All fields wired to the wire contract.
+ * Remote Config page — simplified feature flags only.
+ * Shows toggles for both feature flags and menu items reported by the
+ * seatback. No tables, no separate "live menu state" section.
+ * Toggle any item off and it's removed from the seatback's sidebar +
+ * content area.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -13,8 +16,19 @@ import type {
     AppSetting,
     FeatureFlagOverride,
     MediaWithdrawal,
+    MenuStateItem,
     MenuStateReport,
 } from '../types';
+
+interface ToggleRow {
+    name: string;
+    title: string;
+    cidType: string;
+    enabled: boolean;
+    source: 'flag' | 'menu';
+    flag?: FeatureFlagOverride;
+    menuItem?: MenuStateItem;
+}
 
 export function Config() {
     const toast = useToast();
@@ -34,7 +48,12 @@ export function Config() {
     const [setValue, setSetValue] = useState('');
 
     const refreshAll = useCallback(async () => {
-        await Promise.all([refreshFlags(), refreshWithdrawals(), refreshSettings(), refreshMenuState()]);
+        await Promise.all([
+            refreshFlags(),
+            refreshWithdrawals(),
+            refreshSettings(),
+            refreshMenuState(),
+        ]);
     }, []);
 
     async function refreshFlags() {
@@ -71,7 +90,6 @@ export function Config() {
         try {
             setMenuState(await api.listMenuStates());
         } catch (e) {
-            // Non-fatal — just fall back to hardcoded list
             setMenuState([]);
         }
     }
@@ -81,68 +99,98 @@ export function Config() {
     }, [refreshAll]);
 
     /**
-     * Build a unified list of feature flags + menu items the seatback
-     * reports. Items already exist in the flags table appear as toggles;
-     * menu items reported by the seatback that aren't yet in the flags
-     * list appear as "needs setup" — operator can still toggle them.
+     * Build a unified list of toggles: feature flags + menu items reported
+     * by the seatback. Each toggle shows the state in the UI and toggles
+     * either an existing flag or creates one bound to the menu item.
      */
-    const knownFlagNames = useMemo(() => {
-        const fromFlags = (flags ?? []).map((f) => f.name);
-        // Map menu items → flag names via mappedFeatureFlag, fallback to cidType
-        const fromMenu = (menuState ?? []).flatMap((r) => r.items).map((item) =>
-            item.mappedFeatureFlag || item.cidType?.toUpperCase() || item.title.toUpperCase().replace(/\s+/g, '_')
-        );
-        // Merge & dedupe
-        return Array.from(new Set([...fromFlags, ...fromMenu])).sort();
+    const toggleRows: ToggleRow[] = useMemo(() => {
+        const rows: ToggleRow[] = [];
+        const seen = new Set<string>();
+
+        // First: feature flags from backend
+        for (const flag of flags ?? []) {
+            rows.push({
+                name: flag.name,
+                title: flag.name,
+                cidType: '',
+                enabled: flag.enabled,
+                source: 'flag',
+                flag,
+            });
+            seen.add(flag.name);
+        }
+
+        // Second: menu items reported by seatback that aren't in flags yet
+        for (const report of menuState ?? []) {
+            for (const item of report.items) {
+                // Map menu item to a flag name
+                const flagName =
+                    item.mappedFeatureFlag ||
+                    item.cidType?.toUpperCase() ||
+                    item.title.toUpperCase().replace(/\s+/g, '_');
+                if (seen.has(flagName)) continue;
+                seen.add(flagName);
+
+                rows.push({
+                    name: flagName,
+                    title: item.title || flagName,
+                    cidType: item.cidType || '',
+                    enabled: item.currentlyVisible,
+                    source: 'menu',
+                    menuItem: item,
+                });
+            }
+        }
+
+        return rows;
     }, [flags, menuState]);
 
-    const filteredFlags = useMemo(() => {
-        if (!flags) return null;
+    const filteredRows = useMemo(() => {
         const q = filter.trim().toLowerCase();
-        if (!q) return flags;
-        return flags.filter(f => f.name.toLowerCase().includes(q) || (f.reason || '').toLowerCase().includes(q));
-    }, [flags, filter]);
-
-    const filteredWithdrawals = useMemo(() => {
-        if (!withdrawals) return null;
-        const q = filter.trim().toLowerCase();
-        if (!q) return withdrawals;
-        return withdrawals.filter(w => w.mediaId.toLowerCase().includes(q) || (w.reason || '').toLowerCase().includes(q));
-    }, [withdrawals, filter]);
-
-    async function toggleFlag(name: string) {
-        try {
-            const cur = (flags ?? []).find((f) => f.name === name);
-            if (!cur) return;
-            await api.saveFeature({
-                ...cur,
-                enabled: !cur.enabled,
-                updatedAt: nowIso(),
-                updatedBy: api.operator,
-            });
-            toast(`Toggled ${name}.`, 'success');
-            await refreshFlags();
-        } catch (e) {
-            toast(`Toggle failed: ${(e as Error).message}`, 'error');
-        }
-    }
+        if (!q) return toggleRows;
+        return toggleRows.filter(
+            (r) =>
+                r.name.toLowerCase().includes(q) ||
+                r.title.toLowerCase().includes(q) ||
+                r.cidType.toLowerCase().includes(q),
+        );
+    }, [toggleRows, filter]);
 
     /**
-     * Toggle a known feature flag on/off directly from the toggle grid.
-     * Always flips the enabled state (like toggleFlag does).
+     * Toggle a row. If it's a known flag, just flip the flag. If it's a
+     * menu item not yet in flags, create a new flag (defaulting to the
+     * current visible state) and immediately toggle.
      */
-    async function toggleKnown(name: string) {
+    async function toggleRow(row: ToggleRow) {
         try {
-            const cur = (flags ?? []).find((f) => f.name === name);
-            if (!cur) return;
-            await api.saveFeature({
-                ...cur,
-                enabled: !cur.enabled,
-                updatedAt: nowIso(),
-                updatedBy: api.operator,
-            });
-            toast(`${name}: ${!cur.enabled ? 'ON' : 'OFF'}.`, 'success');
-            await refreshFlags();
+            if (row.flag) {
+                await api.saveFeature({
+                    ...row.flag,
+                    enabled: !row.flag.enabled,
+                    updatedAt: nowIso(),
+                    updatedBy: api.operator,
+                });
+                toast(
+                    `${row.flag.name}: ${!row.flag.enabled ? 'ON' : 'OFF'}`,
+                    'success',
+                );
+            } else if (row.menuItem) {
+                // Create a new feature flag for this menu item
+                const newFlag: FeatureFlagOverride = {
+                    name: row.name,
+                    enabled: !row.menuItem.currentlyVisible,
+                    reason: null,
+                    expiresAt: null,
+                    updatedAt: nowIso(),
+                    updatedBy: api.operator,
+                };
+                await api.saveFeature(newFlag);
+                toast(
+                    `${row.name}: ${newFlag.enabled ? 'ON' : 'OFF'} (new flag)`,
+                    'success',
+                );
+            }
+            await refreshAll();
         } catch (e) {
             toast(`Toggle failed: ${(e as Error).message}`, 'error');
         }
@@ -223,184 +271,132 @@ export function Config() {
     return (
         <section className="tab-panel active">
             <div className="panel-header">
-                <h2>Remote Configuration</h2>
+                <div>
+                    <h2>Remote Configuration</h2>
+                    <div className="panel-header__sub">
+                        Toggle menu items and features on/off at runtime.
+                    </div>
+                </div>
                 <div className="panel-actions">
-                    <button className="btn btn-ghost" onClick={refreshAll}>Refresh</button>
+                    <button className="btn btn-ghost" onClick={refreshAll}>
+                        Refresh
+                    </button>
                 </div>
             </div>
+
             <div className="config-toolbar">
                 <input
                     type="search"
-                    placeholder="Filter by name / ID…"
+                    placeholder="Filter by name…"
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                 />
             </div>
-            <div className="config-grid config-grid--two">
-                <div className="config-card">
-                    <h3>Feature Flags</h3>
-                    <p className="config-help">
-                        Toggle seatback features on/off at runtime. Click row to archive.
-                    </p>
-                    <table className="config-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>State</th>
-                                <th>Expires</th>
-                                <th>Reason</th>
-                                <th>Updated</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {flagsErr ? (
-                                <tr>
-                                    <td colSpan={6} className="list-empty">Failed to load: {flagsErr}</td>
-                                </tr>
-                            ) : filteredFlags === null ? (
-                                <tr>
-                                    <td colSpan={6} className="list-empty">Loading…</td>
-                                </tr>
-                            ) : filteredFlags.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="list-empty">No feature flags set.</td>
-                                </tr>
-                            ) : (
-                                filteredFlags.map((f) => (
-                                    <tr key={f.name}>
-                                        <td><code>{f.name}</code></td>
-                                        <td className={f.enabled ? 'flag-on' : 'flag-off'}>{
-                                            f.enabled ? 'ON' : 'OFF'
-                                        }</td>
-                                        <td>
-                                            {f.expiresAt ? (
-                                                <span className="badge badge--warn">
-                                                    {new Date(f.expiresAt).toLocaleString('en-US', {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                        hour: '2-digit',
-                                                        minute: '2-digit',
-                                                    })}
-                                                </span>
-                                            ) : null}
-                                        </td>
-                                        <td>{f.reason ?? ''}</td>
-                                        <td>{f.updatedAt ? new Date(f.updatedAt).toLocaleString() : ''}</td>
-                                        <td>
-                                            <button
-                                                className="btn btn-ghost"
-                                                onClick={() => void toggleFlag(f.name)}
-                                                style={{ fontSize: '11px' }}
-                                            >
-                                                Toggle
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                    <div className="flag-toggle-grid">
-                        {knownFlagNames.length > 0 ? (
-                            knownFlagNames.map((name) => {
-                                const flag = (flags ?? []).find((f) => f.name === name);
-                                const menuItem = (menuState ?? [])
-                                    .flatMap((r) => r.items)
-                                    .find((item) =>
-                                        item.mappedFeatureFlag === name ||
-                                        item.cidType?.toUpperCase() === name ||
-                                        item.title.toUpperCase().replace(/\s+/g, '_') === name
-                                    );
-                                const enabled = flag?.enabled ?? true;  // default ON if no flag override
-                                return (
-                                    <button
-                                        key={name}
-                                        type="button"
-                                        className={`flag-toggle ${enabled ? 'flag-toggle--on' : 'flag-toggle--off'} ${!flag ? 'flag-toggle--unset' : ''}`}
-                                        onClick={() => void toggleKnown(name)}
-                                        title={menuItem ? `Linked to menu item "${menuItem.title}" (cidType=${menuItem.cidType})` : `${enabled ? 'ON' : 'OFF'} — click to ${enabled ? 'disable' : 'enable'}`}
-                                    >
-                                        <span className="flag-toggle__name">{name}</span>
-                                        <span className="flag-toggle__state">
-                                            {enabled ? 'ON' : 'OFF'}
-                                        </span>
-                                        <span className="flag-toggle__source">
-                                            {flag
-                                                ? (flag.updatedBy === 'system' || !flag.updatedBy ? 'default' : flag.updatedBy)
-                                                : (menuItem ? `menu:${menuItem.title}` : 'not in backend')}
-                                        </span>
-                                    </button>
-                                );
-                            })
-                        ) : (
-                            <div className="config-help" style={{ gridColumn: '1 / -1' }}>
-                                No flags or menu items yet. Connect a seatback or save one in the table above.
-                            </div>
-                        )}
-                    </div>
-                    <div className="config-help" style={{ marginTop: 'var(--sp-2)', gridColumn: '1 / -1' }}>
-                        Default flags (from seatback) show "default". Operator-created flags show "console-operator".
-                    </div>
-                </div>
 
+            {/* ===== Feature Flags + Menu Items (combined toggles) ===== */}
+            <div className="config-card">
+                <h3>Feature Flags & Menu Items</h3>
+                <p className="config-help">
+                    Toggle any item off and it disappears from the seatback's
+                    sidebar and content area. Items reported by the seatback
+                    but not yet in the flag store are shown as "menu".
+                </p>
+                {flagsErr && (
+                    <div className="list-empty list-empty--error">
+                        Failed to load flags: {flagsErr}
+                    </div>
+                )}
+                {flags === null ? (
+                    <div className="list-empty">Loading…</div>
+                ) : filteredRows.length === 0 ? (
+                    <div className="list-empty">
+                        No flags or menu items yet. Connect a seatback or save
+                        one below.
+                    </div>
+                ) : (
+                    <div className="flag-toggle-grid">
+                        {filteredRows.map((row) => (
+                            <button
+                                key={row.name}
+                                type="button"
+                                className={`flag-toggle ${row.enabled ? 'flag-toggle--on' : 'flag-toggle--off'} ${
+                                    !row.flag ? 'flag-toggle--unset' : ''
+                                }`}
+                                onClick={() => void toggleRow(row)}
+                                title={
+                                    row.cidType
+                                        ? `cidType=${row.cidType}`
+                                        : `${row.enabled ? 'ON' : 'OFF'} — click to ${
+                                              row.enabled ? 'disable' : 'enable'
+                                          }`
+                                }
+                            >
+                                <span className="flag-toggle__name">
+                                    {row.title}
+                                </span>
+                                <span className="flag-toggle__state">
+                                    {row.enabled ? 'ON' : 'OFF'}
+                                </span>
+                                <span className="flag-toggle__source">
+                                    {row.source === 'flag'
+                                        ? row.flag?.updatedBy || 'flag'
+                                        : 'menu'}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ===== Media Withdrawals ===== */}
+            <div className="config-grid config-grid--two">
                 <div className="config-card">
                     <h3>Media Withdrawals</h3>
                     <p className="config-help">
-                        Hide specific media items from passenger catalog. Click row to restore.
+                        Hide specific media items from passenger catalog.
+                        Watch seatback logs for "OPS_MediaWithdrawal: Media ID"
+                        to find IDs.
                     </p>
-                    <table className="config-table">
-                        <thead>
-                            <tr>
-                                <th>Media ID</th>
-                                <th>Expires</th>
-                                <th>Reason</th>
-                                <th>Withdrawn</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {withdrawalsErr ? (
-                                <tr>
-                                    <td colSpan={5} className="list-empty">Failed to load: {withdrawalsErr}</td>
-                                </tr>
-                            ) : filteredWithdrawals === null ? (
-                                <tr>
-                                    <td colSpan={5} className="list-empty">Loading…</td>
-                                </tr>
-                            ) : filteredWithdrawals.length === 0 ? (
-                                <tr>
-                                    <td colSpan={5} className="list-empty">No withdrawals.</td>
-                                </tr>
-                            ) : (
-                                filteredWithdrawals.map((w) => (
-                                    <tr key={w.mediaId}>
-                                        <td><code>{w.mediaId}</code></td>
-                                        <td>
-                                            {w.expiresAt ? (
-                                                <span className="badge badge--warn">
-                                                    {new Date(w.expiresAt).toLocaleString('en-US', {
-                                                        month: 'short',
-                                                        day: 'numeric',
-                                                    })}
-                                                </span>
-                                            ) : null}
-                                        </td>
-                                        <td>{w.reason ?? ''}</td>
-                                        <td>{w.withdrawnAt ? new Date(w.withdrawnAt).toLocaleString() : ''}</td>
-                                        <td>
-                                            <button
-                                                className="btn btn-danger btn-sm"
-                                                onClick={() => void deleteWithdrawal(w.mediaId)}
+                    {withdrawalsErr && (
+                        <div className="list-empty list-empty--error">
+                            Failed to load: {withdrawalsErr}
+                        </div>
+                    )}
+                    {withdrawals === null ? (
+                        <div className="list-empty">Loading…</div>
+                    ) : withdrawals.length === 0 ? (
+                        <div className="list-empty">No withdrawals.</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {withdrawals.map((w) => (
+                                <div
+                                    key={w.mediaId}
+                                    className="list-item"
+                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                >
+                                    <div>
+                                        <code>{w.mediaId}</code>
+                                        {w.reason && (
+                                            <div
+                                                style={{
+                                                    fontSize: '11px',
+                                                    color: 'var(--color-text-muted)',
+                                                }}
                                             >
-                                                Remove
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                                                {w.reason}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        onClick={() => void deleteWithdrawal(w.mediaId)}
+                                    >
+                                        Restore
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <div className="config-add">
                         <input
                             type="text"
@@ -409,68 +405,57 @@ export function Config() {
                             onChange={(e) => setWdId(e.target.value)}
                         />
                         <input
-                            type="datetime-local"
-                            placeholder="Expires"
-                            value={wdExpires}
-                            onChange={(e) => setWdExpires(e.target.value)}
-                        />
-                        <input
                             type="text"
-                            placeholder="Reason"
+                            placeholder="Reason (optional)"
                             value={wdReason}
                             onChange={(e) => setWdReason(e.target.value)}
                         />
-                        <div /> {/* spacer */}
-                        <button className="btn btn-primary" onClick={() => void addWithdrawal()}>Add Withdrawal</button>
+                        <div />
+                        <button className="btn btn-primary" onClick={() => void addWithdrawal()}>
+                            Withdraw
+                        </button>
                     </div>
                 </div>
 
+                {/* ===== App Settings ===== */}
                 <div className="config-card">
                     <h3>App Settings</h3>
                     <p className="config-help">
                         Runtime-tunable values. Auto-parsed to string/number/boolean.
                     </p>
-                    <table className="config-table">
-                        <thead>
-                            <tr>
-                                <th>Key</th>
-                                <th>Value</th>
-                                <th>Updated</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {settingsErr ? (
-                                <tr>
-                                    <td colSpan={4} className="list-empty">Failed to load: {settingsErr}</td>
-                                </tr>
-                            ) : settings === null ? (
-                                <tr>
-                                    <td colSpan={4} className="list-empty">Loading…</td>
-                                </tr>
-                            ) : settings.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="list-empty">No settings.</td>
-                                </tr>
-                            ) : (
-                                settings.map((s) => (
-                                    <tr key={s.key}>
-                                        <td><code>{s.key}</code></td>
-                                        <td><code>{JSON.stringify(s.value)}</code></td>
-                                        <td>{s.updatedAt ? new Date(s.updatedAt).toLocaleString() : ''}</td>
-                                        <td>
-                                            <button
-                                                className="btn btn-danger btn-sm"
-                                                onClick={() => void deleteSetting(s.key)}
-                                            >
-                                                Remove
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+                    {settingsErr && (
+                        <div className="list-empty list-empty--error">
+                            Failed to load: {settingsErr}
+                        </div>
+                    )}
+                    {settings === null ? (
+                        <div className="list-empty">Loading…</div>
+                    ) : settings.length === 0 ? (
+                        <div className="list-empty">No settings.</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {settings.map((s) => (
+                                <div
+                                    key={s.key}
+                                    className="list-item"
+                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                >
+                                    <div>
+                                        <code>{s.key}</code>
+                                        <span style={{ marginLeft: '8px', color: 'var(--color-text-muted)' }}>
+                                            {JSON.stringify(s.value)}
+                                        </span>
+                                    </div>
+                                    <button
+                                        className="btn btn-danger btn-sm"
+                                        onClick={() => void deleteSetting(s.key)}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <div className="config-add">
                         <input
                             type="text"
@@ -485,54 +470,10 @@ export function Config() {
                             onChange={(e) => setSetValue(e.target.value)}
                         />
                         <div />
-                        <button className="btn btn-primary" onClick={() => void addSetting()}>Add / Update</button>
+                        <button className="btn btn-primary" onClick={() => void addSetting()}>
+                            Save
+                        </button>
                     </div>
-                </div>
-
-                <div className="config-card">
-                    <h3>Live Menu State <small style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>(reported by seatback)</small></h3>
-                    <p className="config-help">
-                        Items the seatback actually pushed up. Each row shows the menu item's cidtype / title / service code.
-                        Items with <code>mappedFeatureFlag</code> are wired to feature flags above.
-                    </p>
-                    {!menuState || menuState.length === 0 ? (
-                        <div className="list-empty">No menu state pushed yet. Connect a seatback.</div>
-                    ) : (
-                        <table className="config-table">
-                            <thead>
-                                <tr>
-                                    <th>Device</th>
-                                    <th>Reported</th>
-                                    <th>Items</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {menuState.map((r) => (
-                                    <tr key={r.deviceId}>
-                                        <td>
-                                            <code>{r.deviceId}</code>
-                                            {r.airlineCode && <small style={{ marginLeft: 6, color: 'var(--color-text-muted)' }}>({r.airlineCode})</small>}
-                                        </td>
-                                        <td>{r.reportedAt ? new Date(r.reportedAt).toLocaleString() : ''}</td>
-                                        <td>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                                {r.items.map((item) => (
-                                                    <span
-                                                        key={item.id}
-                                                        className={`badge ${item.currentlyVisible ? 'badge--ok' : 'badge--off'}`}
-                                                        title={`cidType=${item.cidType} • serviceCode=${item.serviceCode} • mappedFlag=${item.mappedFeatureFlag ?? '(none)'}`}
-                                                        style={{ cursor: 'help' }}
-                                                    >
-                                                        {item.title}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    )}
                 </div>
             </div>
         </section>

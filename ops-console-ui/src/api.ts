@@ -206,6 +206,21 @@ export const api = {
         });
     },
 
+    /** Upload an image file, return its absolute URL */
+    async uploadWallpaperImage(file: File): Promise<{ url: string }> {
+        const formData = new FormData();
+        formData.append('image', file);
+        const res = await fetch(this.baseUrl + '/api/v1/wallpapers', {
+            method: 'POST',
+            headers: { 'X-Operator': this.operator },
+            body: formData,
+        });
+        if (!res.ok) {
+            throw new ApiError(`Upload failed: ${res.statusText}`, res.status);
+        }
+        return res.json() as Promise<{ url: string }>;
+    },
+
     /* ---------- Menu state (pushed by the seatback) ---------- */
 
     listMenuStates(): Promise<MenuStateReport[]> {

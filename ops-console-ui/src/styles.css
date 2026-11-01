@@ -873,26 +873,26 @@ code {
 
 .toast {
     position: fixed;
-    bottom: var(--sp-6);
-    right: var(--sp-6);
-    padding: var(--sp-3) var(--sp-4);
-    border-radius: var(--r-md);
-    background: var(--color-surface);
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background: #1a1530;
     border-left: 4px solid var(--color-primary);
     z-index: 1000;
-    box-shadow: var(--shadow-lg);
-    min-width: 240px;
-    max-width: 480px;
-    animation: slideIn 200ms ease-out;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+    min-width: auto;
+    max-width: 360px;
+    font-size: 14px;
+    color: #f5f5f9;
+    animation: toastSlideIn 200ms ease-out;
 }
 .toast--success { border-left-color: var(--color-success); }
 .toast--error { border-left-color: var(--color-danger); }
 .toast--warning { border-left-color: var(--color-warning); }
-.toast__title { font-weight: 600; }
-.toast__message { font-size: var(--fs-sm); color: var(--color-text-muted); margin-top: 2px; }
 
-@keyframes slideIn {
-    from { transform: translateX(20px); opacity: 0; }
+@keyframes toastSlideIn {
+    from { transform: translateX(30px); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
 
@@ -1027,44 +1027,4 @@ code {
     .main { padding: var(--sp-3); }
 }
 
-/* =====================================================================
- * Toast notifications
- * ===================================================================== */
-
-.toast {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: var(--sp-3) var(--sp-4);
-    border-radius: var(--r-md);
-    font-size: var(--fs-sm);
-    box-shadow: var(--shadow-lg);
-    animation: slideIn 300ms ease-out;
-    z-index: 9999;
-    max-width: 320px;
-    word-wrap: break-word;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(400px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-.toast--success {
-    background: var(--color-success);
-    color: white;
-}
-.toast--error {
-    background: var(--color-danger);
-    color: white;
-}
-.toast--warning {
-    background: var(--color-warning);
-    color: white;
-}
+/* Note: Toast styles moved to toast section above (lines 870-897) */
