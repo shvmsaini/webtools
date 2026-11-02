@@ -22,6 +22,8 @@ const DEFAULT_TOKENS: Record<string, string> = {
     primaryLight: '#fef2f3',
     background: '#0a001a',
     backgroundImage: '',
+    sidebarBackgroundImage: '',
+    globalNavBackgroundImage: '',
     surface: '#1e293b',
     textPrimary: '#f5f5f9',
     textMuted: '#bcb7c8',
@@ -41,7 +43,9 @@ const TOKEN_LABELS: Record<keyof typeof DEFAULT_TOKENS, string> = {
     primaryDark: 'Primary Dark',
     primaryLight: 'Primary Surface',
     background: 'Window Background',
-    backgroundImage: 'Background Image URL',
+    backgroundImage: 'Window Background Image URL',
+    sidebarBackgroundImage: 'Sidebar Background Image URL (left menu)',
+    globalNavBackgroundImage: 'Global Nav Background Image URL (Home/Brightness sidebar)',
     surface: 'Card Surface',
     textPrimary: 'Text Primary',
     textMuted: 'Text Muted',
@@ -55,6 +59,17 @@ const TOKEN_LABELS: Record<keyof typeof DEFAULT_TOKENS, string> = {
     sidebarDivder: 'Sidebar Divider Color',
     borderDefault: 'Default Border Color',
 };
+
+/**
+ * Tokens whose values are URLs (image backgrounds) instead of color hexes.
+ * Used to render the right input control (URL field with a clear button vs.
+ * color picker + hex input) and to enable image-mode preview.
+ */
+const URL_TOKENS: ReadonlySet<string> = new Set([
+    'backgroundImage',
+    'sidebarBackgroundImage',
+    'globalNavBackgroundImage',
+]);
 
 /**
  * Pre-built themes for seasonal/campaign rollouts.
@@ -71,6 +86,8 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryLight: '#fff5f5',
             background: '#0d3b1f',
             backgroundImage: '',
+            sidebarBackgroundImage: '',
+            globalNavBackgroundImage: '',
             surface: '#1a5c33',
             textPrimary: '#ffffff',
             textMuted: '#d4e8d4',
@@ -93,6 +110,8 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryLight: '#fff8e7',
             background: '#1a0a1f',
             backgroundImage: '',
+            sidebarBackgroundImage: '',
+            globalNavBackgroundImage: '',
             surface: '#3d1f4d',
             textPrimary: '#fff8e7',
             textMuted: '#e6c89c',
@@ -115,6 +134,8 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryLight: '#e3f2fd',
             background: '#0a3d62',
             backgroundImage: '',
+            sidebarBackgroundImage: '',
+            globalNavBackgroundImage: '',
             surface: '#1e5c8a',
             textPrimary: '#ffffff',
             textMuted: '#b3d9ff',
@@ -137,6 +158,8 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryLight: '#fff0e0',
             background: '#1a0a00',
             backgroundImage: '',
+            sidebarBackgroundImage: '',
+            globalNavBackgroundImage: '',
             surface: '#3d1f0a',
             textPrimary: '#ff7518',
             textMuted: '#cc6600',
@@ -159,6 +182,8 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryLight: '#ffe6ec',
             background: '#1a0011',
             backgroundImage: '',
+            sidebarBackgroundImage: '',
+            globalNavBackgroundImage: '',
             surface: '#3d0a22',
             textPrimary: '#ffe6ec',
             textMuted: '#ffb3c8',
@@ -181,6 +206,8 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryLight: '#fce4ec',
             background: '#1a3d1a',
             backgroundImage: '',
+            sidebarBackgroundImage: '',
+            globalNavBackgroundImage: '',
             surface: '#3d6b3d',
             textPrimary: '#ffffff',
             textMuted: '#c8e6c9',
@@ -412,7 +439,7 @@ export function Theme() {
                                 <h3>Color Tokens</h3>
                                 <div className="token-grid">
                                     {(Object.keys(DEFAULT_TOKENS) as Array<keyof typeof DEFAULT_TOKENS>).map((token) => {
-                                        const isUrl = token === 'backgroundImage';
+                                        const isUrl = URL_TOKENS.has(token);
                                         return (
                                             <div key={token} className="token-row">
                                                 <label className="token-row__name">
@@ -450,6 +477,24 @@ export function Theme() {
                                                                 },
                                                             })
                                                     }
+                                                    {isUrl && (
+                                                        <button
+                                                            type="button"
+                                                            className="token-row__clear"
+                                                            title="Use color instead of image"
+                                                            onClick={() =>
+                                                                setDraft({
+                                                                    ...draft,
+                                                                    colorTokens: {
+                                                                        ...draft.colorTokens,
+                                                                        [token]: '', // Clear URL to fall back to color
+                                                                    },
+                                                                })
+                                                            }
+                                                        >
+                                                            ❌ Clear
+                                                        </button>
+                                                    )}
                                                 />
                                             </div>
                                         </div>
@@ -466,7 +511,9 @@ export function Theme() {
                                     <div
                                         style={{
                                             width: '60px',
-                                            background: draft.colorTokens.globalNavBackground,
+                                            background: draft.colorTokens.globalNavBackgroundImage
+                                                ? `url(${draft.colorTokens.globalNavBackgroundImage}) center/cover no-repeat, ${draft.colorTokens.globalNavBackground}`
+                                                : draft.colorTokens.globalNavBackground,
                                             color: draft.colorTokens.textPrimary,
                                             display: 'flex',
                                             flexDirection: 'column',
@@ -498,7 +545,9 @@ export function Theme() {
                                     <div
                                         style={{
                                             width: '160px',
-                                            background: draft.colorTokens.sidebarBackground,
+                                            background: draft.colorTokens.sidebarBackgroundImage
+                                                ? `url(${draft.colorTokens.sidebarBackgroundImage}) center/cover no-repeat, ${draft.colorTokens.sidebarBackground}`
+                                                : draft.colorTokens.sidebarBackground,
                                             color: draft.colorTokens.textPrimary,
                                             display: 'flex',
                                             flexDirection: 'column',
@@ -588,13 +637,13 @@ export function Theme() {
                                 </div>
                                 <div style={{ marginTop: '12px', fontSize: '11px', color: 'var(--color-text-muted)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     <div>
-                                        <strong>Main sidebar (Movies/TV Shows):</strong> <code>sidebarBackground</code> = <code>{draft.colorTokens.sidebarBackground}</code>
+                                        <strong>Global nav image:</strong> <code>globalNavBackgroundImage</code>{draft.colorTokens.globalNavBackgroundImage ? ` = ${draft.colorTokens.globalNavBackgroundImage}` : ' (none — using globalNavBackground color)'}
                                     </div>
                                     <div>
-                                        <strong>Global nav (Home/Brightness/Back):</strong> <code>globalNavBackground</code> = <code>{draft.colorTokens.globalNavBackground}</code>
+                                        <strong>Sidebar image:</strong> <code>sidebarBackgroundImage</code>{draft.colorTokens.sidebarBackgroundImage ? ` = ${draft.colorTokens.sidebarBackgroundImage}` : ' (none — using sidebarBackground color)'}
                                     </div>
                                     <div>
-                                        <strong>Background image:</strong> <code>backgroundImage</code>{draft.colorTokens.backgroundImage ? ` = ${draft.colorTokens.backgroundImage}` : ' (none — using solid background)'}
+                                        <strong>Background image:</strong> <code>backgroundImage</code>{draft.colorTokens.backgroundImage ? ` = ${draft.colorTokens.backgroundImage}` : ' (none — using solid background color)'}
                                     </div>
                                 </div>
                             </div>
