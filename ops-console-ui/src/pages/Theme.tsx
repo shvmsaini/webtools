@@ -476,7 +476,8 @@ export function Theme() {
                                                                     [token]: e.target.value,
                                                                 },
                                                             })
-                                                    }
+                                                        }
+                                                    />
                                                     {isUrl && (
                                                         <button
                                                             type="button"
@@ -495,9 +496,8 @@ export function Theme() {
                                                             ❌ Clear
                                                         </button>
                                                     )}
-                                                />
+                                                </div>
                                             </div>
-                                        </div>
                                         );
                                     })}
                                 </div>
