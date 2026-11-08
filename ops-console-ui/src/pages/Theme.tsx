@@ -230,6 +230,9 @@ function blankTheme(): ThemePayload {
         label: '',
         description: null,
         colorTokens: { ...DEFAULT_TOKENS },
+        // null = "not yet active". The backend decides which theme is
+        // active when the operator clicks Set as Active.
+        active: null,
         updatedAt: nowIso(),
         updatedBy: api.operator,
     };
@@ -290,6 +293,8 @@ export function Theme() {
     const save = async () => {
         if (!draft) return;
         try {
+            // Preserve the existing active flag (or null) on save. The dashboard
+            // has separate `Set as Active` to flip the flag.
             await api._fetch<ThemePayload>('/api/v1/config/themes', {
                 method: 'POST',
                 body: JSON.stringify(draft),
@@ -302,8 +307,8 @@ export function Theme() {
     };
 
     /**
-     * Set the theme as active (move it to the end of the list so all
-     * devices will pull it from the bundle).
+     * Mark this theme as the active one (the seatback applies the theme
+     * with active=true). The backend enforces exactly one active theme.
      */
     const setActive = async () => {
         if (!draft) return;
@@ -381,11 +386,21 @@ export function Theme() {
                             items.map((t) => (
                                 <div
                                     key={t.id}
-                                    className={`list-item ${t.id === draft?.id ? 'selected' : ''}`}
+                                    className={`list-item ${t.id === draft?.id ? 'selected' : ''} ${
+                                        t.active ? 'list-item--active' : ''
+                                    }`}
                                     onClick={() => select(t.id)}
                                 >
                                     <div className="list-item-title">
                                         <span className="list-item-title-text">{t.label}</span>
+                                        {t.active && (
+                                            <span
+                                                className="list-item__active-badge"
+                                                title="Active theme — pushed to all devices"
+                                            >
+                                                ✓ Active
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="list-item-meta">
                                         <code>{t.id}</code>
@@ -660,7 +675,12 @@ export function Theme() {
                                     type="button"
                                     className="btn btn-secondary"
                                     onClick={setActive}
-                                    title="Activate this theme for all devices in the fleet"
+                                    disabled={draft.active === true}
+                                    title={
+                                        draft.active
+                                            ? 'This theme is already active'
+                                            : 'Activate this theme for all devices in the fleet'
+                                    }
                                 >
                                     ✓ Set as Active
                                 </button>

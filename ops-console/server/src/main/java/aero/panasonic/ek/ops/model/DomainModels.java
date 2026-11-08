@@ -124,11 +124,17 @@ public final class DomainModels {
             String updatedBy
     ) {}
 
+    /**
+     * A visual theme delivered to the seatback. Exactly one theme in the
+     * bundle should have {@code active=true}; the seatback applies that
+     * theme (and ignores the rest).
+     */
     public record ThemePayload(
             @NotBlank String id,
             @NotBlank String label,
             String description,
             @NotNull Map<String, String> colorTokens,
+            Boolean active,
             @NotNull String updatedAt,
             String updatedBy
     ) {}

@@ -126,6 +126,12 @@ export interface ThemePayload {
     label: string;
     description?: string | null;
     colorTokens: Record<string, string>;
+    /**
+     * When true, this is the theme the seatback applies. The dashboard
+     * ensures exactly one theme has active=true at a time. Older payloads
+     * without this field are treated as inactive.
+     */
+    active?: boolean | null;
     updatedAt: string;
     updatedBy?: string;
 }

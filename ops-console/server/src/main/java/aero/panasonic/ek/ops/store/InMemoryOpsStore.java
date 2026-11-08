@@ -51,6 +51,7 @@ public class InMemoryOpsStore {
                 "Leanback Default",
                 "Default Panasonic theme palette.",
                 leanbackDefaultTokens(),
+                Boolean.TRUE,  // active by default so the seatback picks it up
                 Instant.now().toString(),
                 "system"
         ));
@@ -221,11 +222,16 @@ public class InMemoryOpsStore {
     // ---------- Themes ----------
 
     public ThemePayload saveTheme(ThemePayload t) {
+        // Preserve active flag if the client omitted it (e.g. a save before
+        // the operator has picked this theme as active). Otherwise honour
+        // whatever the dashboard sent.
+        Boolean active = t.active();
         ThemePayload stamped = new ThemePayload(
                 t.id(),
                 t.label(),
                 t.description(),
                 t.colorTokens(),
+                active,
                 Instant.now().toString(),
                 t.updatedBy()
         );
@@ -234,21 +240,39 @@ public class InMemoryOpsStore {
     }
 
     public boolean deleteTheme(String id) {
-        return themes.remove(id) != null;
+        boolean removed = themes.remove(id) != null;
+        // If we deleted the active theme, fall back to the default so the
+        // seatback never sees an empty bundle.
+        if (removed && !themes.values().stream().anyMatch(th -> Boolean.TRUE.equals(th.active()))) {
+            themes.values().stream().findFirst().ifPresent(th ->
+                    themes.put(th.id(), new ThemePayload(
+                            th.id(), th.label(), th.description(), th.colorTokens(),
+                            Boolean.TRUE, Instant.now().toString(), "system")));
+        }
+        return removed;
     }
 
     /**
-     * Move a theme to the end of the list so it becomes the active theme
-     * (the app applies the last theme in the bundle).
+     * Marks the chosen theme as active and every other theme as inactive.
+     * The bundle returned to the seatback lists the active theme last so
+     * the seatback's `lastOrNull()` picks it up.
      */
     public Optional<ThemePayload> setThemeActive(String id) {
-        ThemePayload theme = themes.get(id);
-        if (theme == null) return Optional.empty();
+        ThemePayload chosen = themes.get(id);
+        if (chosen == null) return Optional.empty();
 
-        // Remove and re-add to move to end
-        themes.remove(id);
-        themes.put(id, theme);
-        return Optional.of(theme);
+        Instant now = Instant.now();
+        // Clear active flag on every other theme, set it on the chosen one.
+        for (Map.Entry<String, ThemePayload> e : themes.entrySet()) {
+            boolean shouldBeActive = e.getKey().equals(id);
+            ThemePayload t = e.getValue();
+            if (Boolean.TRUE.equals(t.active()) == shouldBeActive) continue;
+            themes.put(e.getKey(), new ThemePayload(
+                    t.id(), t.label(), t.description(), t.colorTokens(),
+                    shouldBeActive, now, t.updatedBy()
+            ));
+        }
+        return Optional.of(themes.get(id));
     }
 
     public Optional<ThemePayload> getTheme(String id) {
@@ -256,7 +280,18 @@ public class InMemoryOpsStore {
     }
 
     public List<ThemePayload> listThemes() {
-        return sortedById(themes);
+        // Sort: inactive themes first (insertion order), active theme LAST
+        // so the seatback picks the active theme via `lastOrNull()`.
+        // We break ties by updatedAt so the most-recently-edited theme wins
+        // when multiple happen to be active (defensive).
+        return themes.values().stream()
+                .sorted((a, b) -> {
+                    boolean aActive = Boolean.TRUE.equals(a.active());
+                    boolean bActive = Boolean.TRUE.equals(b.active());
+                    if (aActive != bActive) return aActive ? 1 : -1;
+                    return a.updatedAt().compareTo(b.updatedAt());
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     // ---------- Wallpapers ----------

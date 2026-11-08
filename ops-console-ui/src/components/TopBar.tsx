@@ -2,19 +2,21 @@
  * Copyright (c) 2024 Panasonic Avionics
  *
  * Top bar — shows the backend connectivity status + the operator name,
- * and provides theme toggle (dark / light mode).
+ * and provides theme mode selector (auto / light / dark).
  */
 
 import React from 'react';
 import { api } from '../api';
 
+export type ThemeMode = 'auto' | 'light' | 'dark';
+
 interface Props {
     connected: boolean | null;
-    theme?: string;
-    onThemeChange?: (theme: string) => void;
+    theme?: ThemeMode;
+    onThemeChange?: (theme: ThemeMode) => void;
 }
 
-export function TopBar({ connected, theme = 'dark', onThemeChange }: Props) {
+export function TopBar({ connected, theme = 'auto', onThemeChange }: Props) {
     const [apiUrl, setApiUrl] = React.useState(api.baseUrl);
     const [operator, setOperator] = React.useState(api.operator);
 
@@ -28,11 +30,6 @@ export function TopBar({ connected, theme = 'dark', onThemeChange }: Props) {
         setOperator(api.operator);
     };
 
-    const toggleTheme = () => {
-        const newTheme = theme === 'dark' ? 'light' : 'dark';
-        onThemeChange?.(newTheme);
-    };
-
     return (
         <header className="top-bar">
             <div className="top-bar__brand">
@@ -44,14 +41,19 @@ export function TopBar({ connected, theme = 'dark', onThemeChange }: Props) {
                 <span>{connected === true ? 'Connected' : connected === false ? 'Offline' : 'Connecting…'}</span>
             </div>
             <div className="top-bar__settings">
-                <button
-                    onClick={toggleTheme}
+                {/* Theme mode: auto follows OS preference, light/dark are explicit. */}
+                <select
                     className="btn btn-sm btn-ghost"
-                    title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                    value={theme}
+                    onChange={(e) => onThemeChange?.(e.target.value as ThemeMode)}
+                    title="Theme mode — Auto follows your operating system"
                     style={{ padding: '6px 10px' }}
+                    aria-label="Theme mode"
                 >
-                    {theme === 'dark' ? '☀️' : '🌙'}
-                </button>
+                    <option value="auto">🖥️ Auto</option>
+                    <option value="light">☀️ Light</option>
+                    <option value="dark">🌙 Dark</option>
+                </select>
                 <input
                     type="text"
                     placeholder="API base URL"

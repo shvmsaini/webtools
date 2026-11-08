@@ -7,7 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { TopBar } from './components/TopBar';
+import { TopBar, ThemeMode } from './components/TopBar';
 import { Notifications } from './pages/Notifications';
 import { WebView } from './pages/WebView';
 import { Config } from './pages/Config';
@@ -26,25 +26,61 @@ const TABS = [
     { path: '/search', label: 'Search Dashboard' },
 ] as const;
 
+const STORAGE_KEY_THEME = 'ops-console-theme';
+
+/** Resolves the user-stored theme mode, defaulting to 'auto'. */
+function loadThemeMode(): ThemeMode {
+    const saved = localStorage.getItem(STORAGE_KEY_THEME);
+    if (saved === 'light' || saved === 'dark' || saved === 'auto') return saved;
+    return 'auto';
+}
+
+/**
+ * Resolves a theme mode to the actual color scheme that should be
+ * applied right now. 'auto' follows the OS preference.
+ */
+function resolveMode(mode: ThemeMode): 'light' | 'dark' {
+    if (mode === 'auto') {
+        if (typeof window !== 'undefined' && window.matchMedia) {
+            return window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark';
+        }
+        return 'dark';
+    }
+    return mode;
+}
+
 export function App() {
     const [connected, setConnected] = useState<boolean | null>(null);
-    const [theme, setTheme] = useState<string>(() => {
-        // Load theme from localStorage, default to dark
-        const saved = localStorage.getItem('ops-console-theme');
-        return saved || 'dark';
-    });
+    const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
 
+    // Apply the resolved theme to <html data-theme="...">. When in 'auto'
+    // we also subscribe to the OS preference so the dashboard flips in
+    // real time as the user toggles their system theme.
     useEffect(() => {
-        // Apply theme to document root
         const root = document.documentElement;
-        if (theme === 'light') {
-            root.setAttribute('data-theme', 'light');
-        } else {
-            root.removeAttribute('data-theme');
+        const apply = (resolved: 'light' | 'dark') => {
+            if (resolved === 'light') {
+                root.setAttribute('data-theme', 'light');
+            } else {
+                root.removeAttribute('data-theme');
+            }
+        };
+        apply(resolveMode(themeMode));
+        localStorage.setItem(STORAGE_KEY_THEME, themeMode);
+
+        if (themeMode !== 'auto') return;
+        const mql = window.matchMedia('(prefers-color-scheme: light)');
+        const onChange = () => apply(resolveMode('auto'));
+        // Safari < 14 only supports addListener; modern browsers use addEventListener.
+        if (mql.addEventListener) {
+            mql.addEventListener('change', onChange);
+            return () => mql.removeEventListener('change', onChange);
         }
-        // Persist theme preference
-        localStorage.setItem('ops-console-theme', theme);
-    }, [theme]);
+        mql.addListener(onChange);
+        return () => mql.removeListener(onChange);
+    }, [themeMode]);
 
     useEffect(() => {
         let cancelled = false;
@@ -64,7 +100,7 @@ export function App() {
 
     return (
         <ToastProvider>
-            <TopBar connected={connected} theme={theme} onThemeChange={setTheme} />
+            <TopBar connected={connected} theme={themeMode} onThemeChange={setThemeMode} />
             <nav className="tabs">
                 {TABS.map((t) => {
                     const active = location.pathname.startsWith(t.path);

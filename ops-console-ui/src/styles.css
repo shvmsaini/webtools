@@ -247,6 +247,10 @@ code {
 }
 
 .tab-panel { display: flex; flex-direction: column; gap: var(--sp-4); }
+/* Reserve room at the bottom of every tab for the floating toast
+   (`position: fixed; bottom: 24px`) so action buttons / Save / Delete
+   in long forms don't get hidden behind "Theme saved." etc. */
+.tab-panel { padding-bottom: 96px; }
 
 .panel-header {
     display: flex;
@@ -340,6 +344,26 @@ code {
 .list-item.selected {
     background: var(--color-surface-2);
     border-left-color: var(--color-primary);
+}
+/* Active theme — highlighted in green so operators can see at a glance
+   which theme the seatback is currently pushing. */
+.list-item--active {
+    border-left-color: var(--color-success);
+}
+.list-item--active.selected {
+    border-left-color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface-2));
+}
+.list-item__active-badge {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--color-success-bg);
+    color: var(--color-success);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid color-mix(in srgb, var(--color-success) 30%, transparent);
 }
 .list-item-title {
     display: flex;
