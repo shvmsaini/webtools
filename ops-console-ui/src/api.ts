@@ -9,6 +9,8 @@
  */
 
 import type {
+    ApkUpdate,
+    ApkUpdateStatus,
     AppSetting,
     FeatureFlagInput,
     FeatureFlagOverride,
@@ -204,6 +206,50 @@ export const api = {
         return this._fetch(`/api/v1/wallpapers/${encodeURIComponent(id)}`, {
             method: 'DELETE',
         });
+    },
+
+    /* ---------- APK updates ---------- */
+
+    listApkUpdates(): Promise<ApkUpdate[]> {
+        return this._fetch('/api/v1/apk-updates');
+    },
+
+    saveApkUpdate(a: ApkUpdate): Promise<ApkUpdate> {
+        return this._fetch('/api/v1/apk-updates', {
+            method: 'POST',
+            body: JSON.stringify(a),
+        });
+    },
+
+    deleteApkUpdate(id: string): Promise<void> {
+        return this._fetch(`/api/v1/apk-updates/${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+        });
+    },
+
+    listApkUpdateStatuses(id: string): Promise<ApkUpdateStatus[]> {
+        return this._fetch(`/api/v1/apk-updates/${encodeURIComponent(id)}/status`);
+    },
+
+    /** Uploads the APK file. The server hashes it and returns the updated entry. */
+    async uploadApkFile(id: string, file: File): Promise<ApkUpdate> {
+        const formData = new FormData();
+        formData.append('file', file);
+        let res: Response;
+        try {
+            res = await fetch(`${this.baseUrl}/api/v1/apk-updates/${encodeURIComponent(id)}/upload`, {
+                method: 'POST',
+                headers: { 'X-Operator': this.operator },
+                body: formData,
+            });
+        } catch (e) {
+            throw new ApiError(`Network error: ${(e as Error).message}`, 0);
+        }
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new ApiError(`HTTP ${res.status}: ${text || res.statusText}`, res.status);
+        }
+        return res.json() as Promise<ApkUpdate>;
     },
 
     /** Upload an image file, return its absolute URL */

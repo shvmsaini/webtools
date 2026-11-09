@@ -13,6 +13,7 @@ import { WebView } from './pages/WebView';
 import { Config } from './pages/Config';
 import { Theme } from './pages/Theme';
 import { Wallpaper } from './pages/Wallpaper';
+import { ApkUpdates } from './pages/ApkUpdates';
 import { SearchDashboard } from './pages/SearchDashboard';
 import { ToastProvider } from './lib/toast';
 import { api } from './api';
@@ -23,6 +24,7 @@ const TABS = [
     { path: '/config', label: 'Remote Config' },
     { path: '/theme', label: 'Theme' },
     { path: '/wallpaper', label: 'Wallpapers' },
+    { path: '/apk', label: 'APK Updates' },
     { path: '/search', label: 'Search Dashboard' },
 ] as const;
 
@@ -124,6 +126,8 @@ export function App() {
                     <Route path="/config" element={<Config />} />
                     <Route path="/theme" element={<Theme />} />
                     <Route path="/wallpaper" element={<Wallpaper />} />
+                    <Route path="/apk" element={<ApkUpdates />} />
+
                     <Route path="/search" element={<SearchDashboard />} />
                     <Route path="*" element={<Navigate to="/notifications" replace />} />
                 </Routes>

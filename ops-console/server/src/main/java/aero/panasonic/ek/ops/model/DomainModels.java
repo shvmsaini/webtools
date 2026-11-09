@@ -168,6 +168,42 @@ public final class DomainModels {
             Targeting targeting
     ) {}
 
+    /**
+     * An APK the operator uploaded for remote installation on seats.
+     *
+     * {@code sha256}, {@code signerFingerprint} and {@code downloadUrl} are
+     * filled in by the server on upload; the operator never types them.
+     * Only {@code active=true} entries are included in the bundle.
+     */
+    public record ApkUpdate(
+            @NotBlank String id,
+            @NotBlank String packageName,
+            String versionName,
+            String downloadUrl,
+            String sha256,
+            String signerFingerprint,
+            String minAppVersion,
+            Boolean requireReboot,
+            Boolean active,
+            Long sizeBytes,
+            String fileName,
+            @NotNull String createdAt,
+            String updatedBy,
+            Targeting targeting
+    ) {}
+
+    /** Progress report a seat posts back for one APK update. */
+    public record ApkUpdateStatus(
+            @NotBlank String updateId,
+            String deviceId,
+            String packageName,
+            @NotBlank String status,
+            String errorMessage,
+            String errorCode,
+            Long reportedAt,
+            Long durationMs
+    ) {}
+
     public record OperationsBundle(
             String version,
             String fetchedAt,
@@ -177,7 +213,8 @@ public final class DomainModels {
             List<WebExperience> webviewExperiences,
             List<NotificationPayload> notifications,
             List<ThemePayload> themes,
-            List<Wallpaper> wallpapers
+            List<Wallpaper> wallpapers,
+            List<ApkUpdate> apkUpdates
     ) {}
 
     /**

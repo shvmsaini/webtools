@@ -1,5 +1,7 @@
 package aero.panasonic.ek.ops.store;
 
+import aero.panasonic.ek.ops.model.DomainModels.ApkUpdate;
+import aero.panasonic.ek.ops.model.DomainModels.ApkUpdateStatus;
 import aero.panasonic.ek.ops.model.DomainModels.AppSetting;
 import aero.panasonic.ek.ops.model.DomainModels.FeatureFlagOverride;
 import aero.panasonic.ek.ops.model.DomainModels.MediaWithdrawal;
@@ -41,6 +43,9 @@ public class InMemoryOpsStore {
     private final ConcurrentHashMap<String, Wallpaper> wallpapers = new ConcurrentHashMap<>();
     // deviceId -> most recent MenuStateReport from that seatback
     private final ConcurrentHashMap<String, MenuStateReport> menuStateReports = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ApkUpdate> apkUpdates = new ConcurrentHashMap<>();
+    // updateId + deviceId -> latest status a seat reported for that update
+    private final ConcurrentHashMap<String, ApkUpdateStatus> apkUpdateStatuses = new ConcurrentHashMap<>();
 
     public InMemoryOpsStore() {
         // Themes ship with a default palette so the seatback has a baseline
@@ -371,9 +376,53 @@ public class InMemoryOpsStore {
         return sortedById(menuStateReports);
     }
 
+    // ---------- APK updates ----------
+
+    public ApkUpdate saveApkUpdate(ApkUpdate a) {
+        apkUpdates.put(a.id(), a);
+        return a;
+    }
+
+    public Optional<ApkUpdate> getApkUpdate(String id) {
+        return Optional.ofNullable(apkUpdates.get(id));
+    }
+
+    public boolean deleteApkUpdate(String id) {
+        return apkUpdates.remove(id) != null;
+    }
+
+    public List<ApkUpdate> listApkUpdates() {
+        return sortedById(apkUpdates);
+    }
+
+    /** Keyed by updateId + deviceId so each seat's latest status is kept. */
+    public ApkUpdateStatus saveApkUpdateStatus(ApkUpdateStatus s) {
+        String key = s.updateId() + "|" + (s.deviceId() == null ? "unknown" : s.deviceId());
+        ApkUpdateStatus stamped = new ApkUpdateStatus(
+                s.updateId(), s.deviceId(), s.packageName(), s.status(),
+                s.errorMessage(), s.errorCode(),
+                s.reportedAt() != null ? s.reportedAt() : System.currentTimeMillis(),
+                s.durationMs()
+        );
+        apkUpdateStatuses.put(key, stamped);
+        return stamped;
+    }
+
+    public List<ApkUpdateStatus> listApkUpdateStatuses(String updateId) {
+        return apkUpdateStatuses.values().stream()
+                .filter(s -> updateId == null || updateId.equals(s.updateId()))
+                .sorted(Comparator.comparing((ApkUpdateStatus s) -> s.deviceId() == null ? "" : s.deviceId()))
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
     // ---------- Bundle ----------
 
     public OperationsBundle toBundle() {
+        // Only active APKs whose file was actually uploaded reach the seat.
+        // A metadata row without a file would send seats a download URL that 404s.
+        List<ApkUpdate> activeApks = listApkUpdates().stream()
+                .filter(a -> Boolean.TRUE.equals(a.active()) && a.sha256() != null)
+                .collect(Collectors.toCollection(ArrayList::new));
         return new OperationsBundle(
                 "1.0",
                 Instant.now().toString(),
@@ -383,7 +432,8 @@ public class InMemoryOpsStore {
                 listWebviewExperiences(),
                 listNotifications(),
                 listThemes(),
-                listWallpapers()
+                listWallpapers(),
+                activeApks
         );
     }
 

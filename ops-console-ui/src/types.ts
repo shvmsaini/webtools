@@ -139,6 +139,40 @@ export interface OperationsBundle {
     notifications: NotificationPayload[];
     themes: ThemePayload[];
     wallpapers: WallpaperPayload[];
+    apkUpdates: ApkUpdate[];
+}
+
+/**
+ * An APK pushed to seats for remote installation. Hash, size and download
+ * URL are set by the server when a file is uploaded; the operator edits the
+ * remaining fields only.
+ */
+export interface ApkUpdate {
+    id: string;
+    packageName: string;
+    versionName?: string | null;
+    downloadUrl?: string | null;
+    sha256?: string | null;
+    signerFingerprint?: string | null;
+    minAppVersion?: string | null;
+    requireReboot: boolean;
+    active: boolean;
+    sizeBytes?: number | null;
+    fileName?: string | null;
+    createdAt: string;
+    updatedBy?: string | null;
+    targeting?: Targeting | null;
+}
+
+export interface ApkUpdateStatus {
+    updateId: string;
+    deviceId?: string | null;
+    packageName?: string | null;
+    status: string;
+    errorMessage?: string | null;
+    errorCode?: string | null;
+    reportedAt?: number | null;
+    durationMs?: number | null;
 }
 
 export interface ThemePayload {
