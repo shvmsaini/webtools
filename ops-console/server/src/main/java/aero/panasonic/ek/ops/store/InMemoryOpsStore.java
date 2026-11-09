@@ -269,7 +269,7 @@ public class InMemoryOpsStore {
             if (Boolean.TRUE.equals(t.active()) == shouldBeActive) continue;
             themes.put(e.getKey(), new ThemePayload(
                     t.id(), t.label(), t.description(), t.colorTokens(),
-                    shouldBeActive, now, t.updatedBy()
+                    shouldBeActive, now.toString(), t.updatedBy()
             ));
         }
         return Optional.of(themes.get(id));
