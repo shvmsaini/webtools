@@ -99,6 +99,8 @@ public final class DomainModels {
 
     /**
      * Toggle an Interactive feature (e.g. GAMES, MAPS) on or off at runtime.
+     * {@code targeting} is optional — null/missing = broadcast to every seat.
+     * Set to restrict this override to specific seats / languages / cabin.
      */
     public record FeatureFlagOverride(
             @NotBlank String name,
@@ -106,7 +108,8 @@ public final class DomainModels {
             String expiresAt,
             String reason,
             @NotNull String updatedAt,
-            String updatedBy
+            String updatedBy,
+            Targeting targeting
     ) {}
 
     /** Withdraw a single media item from the catalogue. */
@@ -114,20 +117,25 @@ public final class DomainModels {
             @NotBlank String mediaId,
             String reason,
             String expiresAt,
-            @NotNull String withdrawnAt
+            @NotNull String withdrawnAt,
+            Targeting targeting
     ) {}
 
     public record AppSetting(
             @NotBlank String key,
             @NotNull Object value,
             @NotNull String updatedAt,
-            String updatedBy
+            String updatedBy,
+            Targeting targeting
     ) {}
 
     /**
      * A visual theme delivered to the seatback. Exactly one theme in the
      * bundle should have {@code active=true}; the seatback applies that
      * theme (and ignores the rest).
+     *
+     * {@code targeting} is optional — null/missing = broadcast theme. Set
+     * to scope this theme to specific seats.
      */
     public record ThemePayload(
             @NotBlank String id,
@@ -136,7 +144,8 @@ public final class DomainModels {
             @NotNull Map<String, String> colorTokens,
             Boolean active,
             @NotNull String updatedAt,
-            String updatedBy
+            String updatedBy,
+            Targeting targeting
     ) {}
 
     /**
@@ -145,6 +154,9 @@ public final class DomainModels {
      *
      * `imageUrl` is served by the Ops Console backend
      * (e.g. `/api/v1/wallpapers/{id}/image`).
+     *
+     * {@code targeting} is optional — null/missing = broadcast wallpaper.
+     * Set to scope this wallpaper to specific seats.
      */
     public record Wallpaper(
             @NotBlank String id,
@@ -152,7 +164,8 @@ public final class DomainModels {
             @NotBlank String imageUrl,
             @NotNull Boolean active,
             @NotNull String updatedAt,
-            String updatedBy
+            String updatedBy,
+            Targeting targeting
     ) {}
 
     public record OperationsBundle(

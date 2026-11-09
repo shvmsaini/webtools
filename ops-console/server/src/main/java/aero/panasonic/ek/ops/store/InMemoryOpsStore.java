@@ -53,7 +53,8 @@ public class InMemoryOpsStore {
                 leanbackDefaultTokens(),
                 Boolean.TRUE,  // active by default so the seatback picks it up
                 Instant.now().toString(),
-                "system"
+                "system",
+                null  // broadcast — default applies to every seat
         ));
 
         // Initialize default feature flags so the seatback always has
@@ -71,7 +72,8 @@ public class InMemoryOpsStore {
                     null,  // no expiration
                     "Default from seatback",
                     Instant.now().toString(),
-                    "system"
+                    "system",
+                    null  // broadcast — defaults apply to every seat
             );
             featureFlags.put(name, flag);
         }
@@ -147,8 +149,17 @@ public class InMemoryOpsStore {
     // ---------- Feature flags ----------
 
     public FeatureFlagOverride saveFeatureFlag(FeatureFlagOverride f) {
-        featureFlags.put(f.name(), f);
-        return f;
+        FeatureFlagOverride stamped = new FeatureFlagOverride(
+                f.name(),
+                f.enabled(),
+                f.expiresAt(),
+                f.reason(),
+                Instant.now().toString(),
+                f.updatedBy(),
+                f.targeting()
+        );
+        featureFlags.put(f.name(), stamped);
+        return stamped;
     }
 
     public Optional<FeatureFlagOverride> getFeatureFlag(String name) {
@@ -172,7 +183,8 @@ public class InMemoryOpsStore {
                         null,
                         "Default from seatback",
                         Instant.now().toString(),
-                        "system"
+                        "system",
+                        null  // broadcast — defaults apply to every seat
                 );
                 featureFlags.put(name, flag);
             }
@@ -188,8 +200,15 @@ public class InMemoryOpsStore {
     // ---------- Media withdrawals ----------
 
     public MediaWithdrawal saveWithdrawal(MediaWithdrawal w) {
-        withdrawnMedia.put(w.mediaId(), w);
-        return w;
+        MediaWithdrawal stamped = new MediaWithdrawal(
+                w.mediaId(),
+                w.reason(),
+                w.expiresAt(),
+                Instant.now().toString(),
+                w.targeting()
+        );
+        withdrawnMedia.put(w.mediaId(), stamped);
+        return stamped;
     }
 
     public boolean deleteWithdrawal(String mediaId) {
@@ -203,8 +222,15 @@ public class InMemoryOpsStore {
     // ---------- App settings ----------
 
     public AppSetting saveSetting(AppSetting s) {
-        settings.put(s.key(), s);
-        return s;
+        AppSetting stamped = new AppSetting(
+                s.key(),
+                s.value(),
+                Instant.now().toString(),
+                s.updatedBy(),
+                s.targeting()
+        );
+        settings.put(s.key(), stamped);
+        return stamped;
     }
 
     public boolean deleteSetting(String key) {
@@ -233,7 +259,8 @@ public class InMemoryOpsStore {
                 t.colorTokens(),
                 active,
                 Instant.now().toString(),
-                t.updatedBy()
+                t.updatedBy(),
+                t.targeting()
         );
         themes.put(t.id(), stamped);
         return stamped;
@@ -247,7 +274,7 @@ public class InMemoryOpsStore {
             themes.values().stream().findFirst().ifPresent(th ->
                     themes.put(th.id(), new ThemePayload(
                             th.id(), th.label(), th.description(), th.colorTokens(),
-                            Boolean.TRUE, Instant.now().toString(), "system")));
+                            Boolean.TRUE, Instant.now().toString(), "system", th.targeting())));
         }
         return removed;
     }
@@ -269,7 +296,7 @@ public class InMemoryOpsStore {
             if (Boolean.TRUE.equals(t.active()) == shouldBeActive) continue;
             themes.put(e.getKey(), new ThemePayload(
                     t.id(), t.label(), t.description(), t.colorTokens(),
-                    shouldBeActive, now.toString(), t.updatedBy()
+                    shouldBeActive, now.toString(), t.updatedBy(), t.targeting()
             ));
         }
         return Optional.of(themes.get(id));
@@ -303,7 +330,8 @@ public class InMemoryOpsStore {
                 w.imageUrl(),
                 w.active() != null ? w.active() : Boolean.TRUE,
                 Instant.now().toString(),
-                w.updatedBy()
+                w.updatedBy(),
+                w.targeting()
         );
         wallpapers.put(w.id(), stamped);
         return stamped;

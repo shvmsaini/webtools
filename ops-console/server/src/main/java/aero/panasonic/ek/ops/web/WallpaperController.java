@@ -98,7 +98,8 @@ public class WallpaperController {
                 "",
                 true,
                 java.time.Instant.now().toString(),
-                "upload"
+                "upload",
+                store.getWallpaper(id).map(Wallpaper::targeting).orElse(null)
         ));
 
         Path saved = wallpaperStore.saveImage(id, file.getBytes(), contentType);
@@ -109,7 +110,8 @@ public class WallpaperController {
                 imageUrl,
                 true,
                 java.time.Instant.now().toString(),
-                store.getWallpaper(id).map(Wallpaper::updatedBy).orElse("upload")
+                store.getWallpaper(id).map(Wallpaper::updatedBy).orElse("upload"),
+                store.getWallpaper(id).map(Wallpaper::targeting).orElse(null)
         ));
         // Refresh imageUrl in case the row above was just bootstrapped.
         updated = store.saveWallpaper(new Wallpaper(
@@ -118,7 +120,8 @@ public class WallpaperController {
                 imageUrl,
                 updated.active(),
                 java.time.Instant.now().toString(),
-                updated.updatedBy()
+                updated.updatedBy(),
+                updated.targeting()
         ));
         return ResponseEntity.ok(updated);
     }

@@ -16,9 +16,10 @@ import {
     CheckboxField,
     TextField,
 } from '../components/EditorField';
+import { TargetingSection } from '../components/TargetingSection';
 import { EmptyState, ErrorState, LoadingState } from '../components/ListColumn';
 import { useToast } from '../lib/toast';
-import { nowIso } from '../lib/utils';
+import { emptyTargeting, nowIso } from '../lib/utils';
 import type { WallpaperPayload } from '../types';
 
 function blankWallpaper(): WallpaperPayload {
@@ -29,7 +30,26 @@ function blankWallpaper(): WallpaperPayload {
         active: true,
         updatedAt: nowIso(),
         updatedBy: api.operator,
+        // Broadcast by default — leave targeting empty to ship the
+        // wallpaper to every seat. Operators can scope a wallpaper to
+        // specific seats via the Targeting section in the editor.
+        targeting: emptyTargeting(),
     };
+}
+
+/**
+ * Returns true if any targeting dimension is populated. Drives the
+ * "Targeted" badge in the wallpaper list so operators can see at a
+ * glance which wallpapers are scoped (vs broadcast to the whole fleet).
+ */
+function hasTargeting(t: WallpaperPayload['targeting']): boolean {
+    if (!t) return false;
+    return (
+        (t.audience != null && t.audience !== 'ALL') ||
+        (t.languages?.length ?? 0) > 0 ||
+        (t.seatNumbers?.length ?? 0) > 0 ||
+        (t.minAppVersion != null && t.minAppVersion !== '')
+    );
 }
 
 export function Wallpaper() {
@@ -57,7 +77,13 @@ export function Wallpaper() {
     const select = (id: string) => {
         const found = items?.find((w) => w.id === id);
         if (!found) return;
-        setDraft({ ...found, active: found.active ?? true });
+        setDraft({
+            ...found,
+            active: found.active ?? true,
+            // Older payloads may not have targeting. Default to broadcast
+            // so the editor renders empty fields rather than undefined.
+            targeting: found.targeting ?? emptyTargeting(),
+        });
     };
 
     const newWallpaper = () => setDraft(blankWallpaper());
@@ -124,6 +150,22 @@ export function Wallpaper() {
                                         {w.active && (
                                             <span className="badge badge-success" style={{ marginLeft: '8px' }}>
                                                 active
+                                            </span>
+                                        )}
+                                        {hasTargeting(w.targeting) && (
+                                            <span
+                                                className="list-item__badge"
+                                                style={{
+                                                    marginLeft: '6px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: 'var(--color-warning-bg, #fef3c7)',
+                                                    color: 'var(--color-warning-text, #92400e)',
+                                                    fontSize: '11px',
+                                                }}
+                                                title="Scoped to specific seats"
+                                            >
+                                                🎯 Targeted
                                             </span>
                                         )}
                                     </div>
@@ -223,6 +265,13 @@ export function Wallpaper() {
                                     />
                                 </div>
                             </div>
+
+                            <TargetingSection
+                                value={draft.targeting ?? emptyTargeting()}
+                                onChange={(next) => setDraft({ ...draft, targeting: next })}
+                                heading="Targeting"
+                                helpText="Per-seat wallpaper override. Leave blank to broadcast this wallpaper to every seat. Set seat numbers to scope it to specific seats only."
+                            />
 
                             <div className="form-actions">
                                 <button

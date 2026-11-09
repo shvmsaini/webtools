@@ -92,7 +92,15 @@ export interface FeatureFlagOverride {
     expiresAt?: string | null;
     reason?: string | null;
     updatedAt: string;
-    updatedBy?: string;
+    updatedBy?: string | null;
+    /**
+     * When null/omitted, this flag applies to every seat (broadcast).
+     * When set, only seats matching the targeting filter see the override;
+     * other seats fall back to the previous (default) value. Operators can
+     * push a per-seat override on top of a fleet broadcast without
+     * rebuilding the bundle.
+     */
+    targeting?: Targeting | null;
 }
 
 export interface MediaWithdrawal {
@@ -100,13 +108,25 @@ export interface MediaWithdrawal {
     reason?: string | null;
     expiresAt?: string | null;
     withdrawnAt: string;
+    /**
+     * Per-seat override. Null/missing = broadcast withdrawal applied to
+     * every seat. Set = the withdrawal only hides the media item on seats
+     * matching the filter; other seats continue to show it.
+     */
+    targeting?: Targeting | null;
 }
 
 export interface AppSetting {
     key: string;
     value: string | number | boolean;
     updatedAt: string;
-    updatedBy?: string;
+    updatedBy?: string | null;
+    /**
+     * Per-seat override. Null/missing = broadcast to every seat. Set = the
+     * setting only updates the matching seats; other seats keep the
+     * previous value.
+     */
+    targeting?: Targeting | null;
 }
 
 export interface OperationsBundle {
@@ -134,6 +154,13 @@ export interface ThemePayload {
     active?: boolean | null;
     updatedAt: string;
     updatedBy?: string;
+    /**
+     * When null/omitted, this theme is broadcast to every seat (the
+     * normal fleet-wide rollout). When set, only seats matching the
+     * targeting filter consider this theme; other seats fall back to
+     * whatever they had applied previously.
+     */
+    targeting?: Targeting | null;
 }
 
 export interface WallpaperPayload {
@@ -143,6 +170,13 @@ export interface WallpaperPayload {
     active: boolean;
     updatedAt: string;
     updatedBy?: string;
+    /**
+     * When null/omitted, the wallpaper is broadcast to every seat. When
+     * set, only seats matching the targeting filter render it; other seats
+     * see the broadcast wallpaper instead (or the bundled default if no
+     * broadcast wallpaper exists).
+     */
+    targeting?: Targeting | null;
 }
 
 // ---------- Request payloads ----------

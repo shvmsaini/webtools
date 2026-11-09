@@ -13,7 +13,8 @@ import { api, ApiError } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/ListColumn';
 import { useToast } from '../lib/toast';
 import { TextField, TextareaField } from '../components/EditorField';
-import { nowIso } from '../lib/utils';
+import { TargetingSection } from '../components/TargetingSection';
+import { emptyTargeting, nowIso } from '../lib/utils';
 import type { ThemePayload } from '../types';
 
 const DEFAULT_TOKENS: Record<string, string> = {
@@ -235,7 +236,41 @@ function blankTheme(): ThemePayload {
         active: null,
         updatedAt: nowIso(),
         updatedBy: api.operator,
+        // Broadcast by default — leave targeting empty to roll out to
+        // every seat. Operators can scope a theme to specific seats via
+        // the Targeting section in the editor.
+        targeting: emptyTargeting(),
     };
+}
+
+/**
+ * Returns true if any targeting dimension is populated. Used to render
+ * a "Targeted" badge in the theme list so operators can see at a glance
+ * which themes are scoped (vs broadcast to the whole fleet).
+ */
+function hasTargeting(t: ThemePayload['targeting']): boolean {
+    if (!t) return false;
+    return (
+        (t.audience != null && t.audience !== 'ALL') ||
+        (t.languages?.length ?? 0) > 0 ||
+        (t.seatNumbers?.length ?? 0) > 0 ||
+        (t.minAppVersion != null && t.minAppVersion !== '')
+    );
+}
+
+/**
+ * Short, human-readable description of which seats a targeting block
+ * scopes to. Used as the badge tooltip so operators can see at a glance
+ * why a theme isn't reaching every seat.
+ */
+function describeTargeting(t: ThemePayload['targeting']): string {
+    if (!t) return 'Broadcast — every seat';
+    const parts: string[] = [];
+    if (t.audience && t.audience !== 'ALL') parts.push(`audience=${t.audience}`);
+    if (t.languages?.length) parts.push(`languages=${t.languages.join(',')}`);
+    if (t.seatNumbers?.length) parts.push(`seats=${t.seatNumbers.join(',')}`);
+    if (t.minAppVersion) parts.push(`minVer=${t.minAppVersion}`);
+    return parts.length === 0 ? 'Broadcast — every seat' : parts.join(' · ');
 }
 
 export function Theme() {
@@ -269,6 +304,9 @@ export function Theme() {
                 ...DEFAULT_TOKENS,
                 ...found.colorTokens,
             },
+            // Older payloads may not have targeting. Default to broadcast
+            // so the editor renders empty fields rather than undefined.
+            targeting: found.targeting ?? emptyTargeting(),
         });
     };
 
@@ -396,9 +434,25 @@ export function Theme() {
                                         {t.active && (
                                             <span
                                                 className="list-item__active-badge"
-                                                title="Active theme — pushed to all devices"
+                                                title="Active theme — pushed to all matching seats"
                                             >
                                                 ✓ Active
+                                            </span>
+                                        )}
+                                        {hasTargeting(t.targeting) && (
+                                            <span
+                                                className="list-item__badge"
+                                                style={{
+                                                    marginLeft: '6px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: 'var(--color-warning-bg, #fef3c7)',
+                                                    color: 'var(--color-warning-text, #92400e)',
+                                                    fontSize: '11px',
+                                                }}
+                                                title={describeTargeting(t.targeting)}
+                                            >
+                                                🎯 Targeted
                                             </span>
                                         )}
                                     </div>
@@ -449,6 +503,13 @@ export function Theme() {
                                     />
                                 </div>
                             </div>
+
+                            <TargetingSection
+                                value={draft.targeting ?? emptyTargeting()}
+                                onChange={(next) => setDraft({ ...draft, targeting: next })}
+                                heading="Targeting"
+                                helpText="Per-seat theme override. Leave blank to broadcast this theme to every seat. Set seat numbers to scope the theme to specific seats only."
+                            />
 
                             <div className="form-section">
                                 <h3>Color Tokens</h3>

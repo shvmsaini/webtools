@@ -10,14 +10,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, ApiError } from '../api';
+import { TargetingSection } from '../components/TargetingSection';
 import { useToast } from '../lib/toast';
-import { nowIso } from '../lib/utils';
+import { emptyTargeting, nowIso } from '../lib/utils';
 import type {
     AppSetting,
     FeatureFlagOverride,
     MediaWithdrawal,
     MenuStateItem,
     MenuStateReport,
+    Targeting,
 } from '../types';
 
 interface ToggleRow {
@@ -28,6 +30,36 @@ interface ToggleRow {
     source: 'flag' | 'menu';
     flag?: FeatureFlagOverride;
     menuItem?: MenuStateItem;
+}
+
+/**
+ * True if [t] actually narrows the audience — i.e. has a non-default
+ * audience, languages, seat numbers, or a min app version. Used by
+ * add-form save paths to decide whether to send the targeting block
+ * with the payload (null when "broadcast to everyone" is the intent).
+ */
+function isTargetingMeaningful(t: Targeting | null | undefined): boolean {
+    if (!t) return false;
+    if (t.audience && t.audience !== 'ALL') return true;
+    if (t.languages && t.languages.length > 0) return true;
+    if (t.seatNumbers && t.seatNumbers.length > 0) return true;
+    if (t.minAppVersion && t.minAppVersion !== '') return true;
+    return false;
+}
+
+/**
+ * Short human-readable description of a targeting block. Used as a
+ * tooltip on the "🎯 Targeted" badge so operators can see at a glance
+ * which seats are in scope without clicking into the editor.
+ */
+function describeTargeting(t: Targeting | null | undefined): string {
+    if (!t || !isTargetingMeaningful(t)) return 'Broadcast — every seat';
+    const parts: string[] = [];
+    if (t.audience && t.audience !== 'ALL') parts.push(`audience=${t.audience}`);
+    if (t.languages?.length) parts.push(`languages=${t.languages.join(',')}`);
+    if (t.seatNumbers?.length) parts.push(`seats=${t.seatNumbers.join(',')}`);
+    if (t.minAppVersion) parts.push(`minVer=${t.minAppVersion}`);
+    return parts.join(' · ');
 }
 
 export function Config() {
@@ -44,8 +76,10 @@ export function Config() {
     const [wdId, setWdId] = useState('');
     const [wdReason, setWdReason] = useState('');
     const [wdExpires, setWdExpires] = useState<string>('');
+    const [wdTargeting, setWdTargeting] = useState<Targeting>(emptyTargeting());
     const [setKey, setSetKey] = useState('');
     const [setValue, setSetValue] = useState('');
+    const [setTargeting, setSetTargeting] = useState<Targeting>(emptyTargeting());
 
     const refreshAll = useCallback(async () => {
         await Promise.all([
@@ -208,11 +242,13 @@ export function Config() {
                 reason: wdReason.trim() || null,
                 expiresAt: wdExpires.trim() ? new Date(wdExpires).toISOString() : null,
                 withdrawnAt: nowIso(),
+                targeting: isTargetingMeaningful(wdTargeting) ? wdTargeting : null,
             });
             toast(`Withdrew ${mediaId}.`, 'success');
             setWdId('');
             setWdReason('');
             setWdExpires('');
+            setWdTargeting(emptyTargeting());
             await refreshWithdrawals();
         } catch (e) {
             toast(`Save failed: ${(e as Error).message}`, 'error');
@@ -248,10 +284,12 @@ export function Config() {
                 value,
                 updatedAt: nowIso(),
                 updatedBy: api.operator,
+                targeting: isTargetingMeaningful(setTargeting) ? setTargeting : null,
             });
             toast(`Saved ${key}.`, 'success');
             setSetKey('');
             setSetValue('');
+            setSetTargeting(emptyTargeting());
             await refreshSettings();
         } catch (e) {
             toast(`Save failed: ${(e as Error).message}`, 'error');
@@ -324,7 +362,9 @@ export function Config() {
                                 }`}
                                 onClick={() => void toggleRow(row)}
                                 title={
-                                    row.cidType
+                                    isTargetingMeaningful(row.flag?.targeting)
+                                        ? `${row.enabled ? 'ON' : 'OFF'} — ${describeTargeting(row.flag?.targeting)} — click to ${row.enabled ? 'disable' : 'enable'}`
+                                        : row.cidType
                                         ? `cidType=${row.cidType}`
                                         : `${row.enabled ? 'ON' : 'OFF'} — click to ${
                                               row.enabled ? 'disable' : 'enable'
@@ -376,6 +416,22 @@ export function Config() {
                                 >
                                     <div>
                                         <code>{w.mediaId}</code>
+                                        {isTargetingMeaningful(w.targeting) && (
+                                            <span
+                                                className="list-item__badge"
+                                                style={{
+                                                    marginLeft: '8px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: 'var(--color-warning-bg, #fef3c7)',
+                                                    color: 'var(--color-warning-text, #92400e)',
+                                                    fontSize: '11px',
+                                                }}
+                                                title={describeTargeting(w.targeting)}
+                                            >
+                                                🎯 Targeted
+                                            </span>
+                                        )}
                                         {w.reason && (
                                             <div
                                                 style={{
@@ -415,6 +471,19 @@ export function Config() {
                             Withdraw
                         </button>
                     </div>
+                    <details style={{ marginTop: '8px' }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                            Targeting (optional — leave collapsed to broadcast)
+                        </summary>
+                        <div style={{ marginTop: '8px' }}>
+                            <TargetingSection
+                                value={wdTargeting}
+                                onChange={setWdTargeting}
+                                heading=""
+                                helpText="Scope this withdrawal to specific seats / languages / cabin. Leave blank to broadcast to the whole fleet."
+                            />
+                        </div>
+                    </details>
                 </div>
 
                 {/* ===== App Settings ===== */}
@@ -445,6 +514,22 @@ export function Config() {
                                         <span style={{ marginLeft: '8px', color: 'var(--color-text-muted)' }}>
                                             {JSON.stringify(s.value)}
                                         </span>
+                                        {isTargetingMeaningful(s.targeting) && (
+                                            <span
+                                                className="list-item__badge"
+                                                style={{
+                                                    marginLeft: '8px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: 'var(--color-warning-bg, #fef3c7)',
+                                                    color: 'var(--color-warning-text, #92400e)',
+                                                    fontSize: '11px',
+                                                }}
+                                                title={describeTargeting(s.targeting)}
+                                            >
+                                                🎯 Targeted
+                                            </span>
+                                        )}
                                     </div>
                                     <button
                                         className="btn btn-danger btn-sm"
@@ -474,6 +559,19 @@ export function Config() {
                             Save
                         </button>
                     </div>
+                    <details style={{ marginTop: '8px' }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                            Targeting (optional — leave collapsed to broadcast)
+                        </summary>
+                        <div style={{ marginTop: '8px' }}>
+                            <TargetingSection
+                                value={setTargeting}
+                                onChange={setSetTargeting}
+                                heading=""
+                                helpText="Scope this setting to specific seats / languages / cabin. Leave blank to broadcast to the whole fleet."
+                            />
+                        </div>
+                    </details>
                 </div>
             </div>
         </section>

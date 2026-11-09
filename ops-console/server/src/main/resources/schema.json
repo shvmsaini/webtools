@@ -114,7 +114,8 @@
         "expiresAt": { "type": ["string", "null"] },
         "reason": { "type": ["string", "null"] },
         "updatedAt": { "type": "string" },
-        "updatedBy": { "type": ["string", "null"] }
+        "updatedBy": { "type": ["string", "null"] },
+        "targeting": { "$ref": "#/definitions/Targeting" }
       }
     },
     "MediaWithdrawal": {
@@ -124,7 +125,8 @@
         "mediaId": { "type": "string" },
         "reason": { "type": ["string", "null"] },
         "expiresAt": { "type": ["string", "null"] },
-        "withdrawnAt": { "type": "string" }
+        "withdrawnAt": { "type": "string" },
+        "targeting": { "$ref": "#/definitions/Targeting" }
       }
     },
     "AppSetting": {
@@ -134,7 +136,8 @@
         "key": { "type": "string" },
         "value": {},
         "updatedAt": { "type": "string" },
-        "updatedBy": { "type": ["string", "null"] }
+        "updatedBy": { "type": ["string", "null"] },
+        "targeting": { "$ref": "#/definitions/Targeting" }
       }
     },
     "ThemePayload": {
@@ -145,8 +148,10 @@
         "label": { "type": "string" },
         "description": { "type": ["string", "null"] },
         "colorTokens": { "type": "object", "additionalProperties": { "type": "string" } },
+        "active": { "type": ["boolean", "null"] },
         "updatedAt": { "type": "string" },
-        "updatedBy": { "type": ["string", "null"] }
+        "updatedBy": { "type": ["string", "null"] },
+        "targeting": { "$ref": "#/definitions/Targeting" }
       }
     },
     "Wallpaper": {
@@ -158,7 +163,8 @@
         "imageUrl": { "type": "string", "format": "uri" },
         "active": { "type": "boolean" },
         "updatedAt": { "type": "string" },
-        "updatedBy": { "type": ["string", "null"] }
+        "updatedBy": { "type": ["string", "null"] },
+        "targeting": { "$ref": "#/definitions/Targeting" }
       }
     }
   }

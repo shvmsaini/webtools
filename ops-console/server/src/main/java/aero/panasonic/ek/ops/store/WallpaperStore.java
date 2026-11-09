@@ -60,7 +60,8 @@ public class WallpaperStore {
                 w.imageUrl(),
                 w.active() != null ? w.active() : Boolean.TRUE,
                 Instant.now().toString(),
-                w.updatedBy()
+                w.updatedBy(),
+                w.targeting()
         );
         wallpapers.put(w.id(), stamped);
         return stamped;
