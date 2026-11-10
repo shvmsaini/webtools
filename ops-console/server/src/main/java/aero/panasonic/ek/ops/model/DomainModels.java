@@ -177,7 +177,9 @@ public final class DomainModels {
      */
     public record ApkUpdate(
             @NotBlank String id,
-            @NotBlank String packageName,
+            // Not required on save: the UI saves a new draft before the file is
+            // uploaded, and the package name is only needed when a seat installs.
+            String packageName,
             String versionName,
             String downloadUrl,
             String sha256,

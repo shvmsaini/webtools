@@ -418,10 +418,13 @@ public class InMemoryOpsStore {
     // ---------- Bundle ----------
 
     public OperationsBundle toBundle() {
-        // Only active APKs whose file was actually uploaded reach the seat.
-        // A metadata row without a file would send seats a download URL that 404s.
+        // Only active APKs with an uploaded file and a package name reach the seat.
+        // A row without a file would send a download URL that 404s, and one
+        // without a package name can't be installed.
         List<ApkUpdate> activeApks = listApkUpdates().stream()
-                .filter(a -> Boolean.TRUE.equals(a.active()) && a.sha256() != null)
+                .filter(a -> Boolean.TRUE.equals(a.active())
+                        && a.sha256() != null
+                        && a.packageName() != null && !a.packageName().isBlank())
                 .collect(Collectors.toCollection(ArrayList::new));
         return new OperationsBundle(
                 "1.0",
