@@ -29,12 +29,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.Part;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.List;
@@ -100,26 +100,37 @@ public class ApkUpdateController {
      * Accepts the APK, hashes it on the server, and records the hash and
      * download URL. The entry stays inactive until the operator turns it on,
      * so an upload alone never pushes anything to seats.
+     *
+     * Streams the request body directly from the servlet input stream so the
+     * whole file isn't held in memory or on the multipart spool. The running
+     * total is checked against MAX_BYTES, which gives us a real size limit
+     * (multipart's per-file cap only matters as a defense in depth).
      */
     @PostMapping(value = "/api/v1/apk-updates/{id}/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> upload(@PathVariable String id,
-                                    @RequestParam("file") MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
+    public ResponseEntity<?> upload(HttpServletRequest request,
+                                    @PathVariable String id) throws IOException, jakarta.servlet.ServletException {
+        // Walk the multipart parts ourselves so we can stream the file part
+        // straight to disk without buffering. Skip any non-file parts so the
+        // operator can POST an optional `note` alongside the APK.
+        Part filePart = null;
+        for (Part p : request.getParts()) {
+            if (p.getSubmittedFileName() != null) filePart = p;
+        }
+        if (filePart == null || filePart.getSize() == 0) {
             return ResponseEntity.badRequest().body("empty file");
         }
-        String name = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
-        if (!name.toLowerCase(Locale.ROOT).endsWith(".apk")) {
+        String name = filePart.getSubmittedFileName();
+        if (name == null || !name.toLowerCase(Locale.ROOT).endsWith(".apk")) {
             return ResponseEntity.status(415).body("file must be a .apk");
-        }
-        if (file.getSize() > ApkStore.MAX_BYTES) {
-            return ResponseEntity.status(413).body("APK exceeds " + ApkStore.MAX_BYTES + " bytes");
         }
 
         ApkStore.Stored stored;
-        try (var in = file.getInputStream()) {
-            stored = apkStore.save(id, in);
-        } catch (IOException e) {
-            return ResponseEntity.status(413).body(e.getMessage());
+        try (InputStream in = filePart.getInputStream()) {
+            try {
+                stored = apkStore.save(id, in);
+            } catch (IOException e) {
+                return ResponseEntity.status(413).body(e.getMessage());
+            }
         }
 
         ApkUpdate current = store.getApkUpdate(id).orElse(null);
