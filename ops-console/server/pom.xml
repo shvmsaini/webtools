@@ -42,6 +42,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- APK manifest reader (pure Java, no Android SDK). Used to auto-fill
+             packageName/versionName/minSdkVersion on upload so operators don't
+             have to type them — the APK is self-describing. -->
+        <dependency>
+            <groupId>net.dongliu</groupId>
+            <artifactId>apk-parser</artifactId>
+            <version>2.6.10</version>
+        </dependency>
         <!-- Hot-reload during development — saves the manual restart cycle
              when adding new controllers, services, or stores. Disabled in
              production builds via spring-boot-maven-plugin's excludes. -->

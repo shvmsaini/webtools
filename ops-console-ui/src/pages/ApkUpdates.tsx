@@ -21,10 +21,10 @@ function blankApk(): ApkUpdate {
         packageName: '',
         versionName: '',
         signerFingerprint: '',
-        minAppVersion: '',
         requireReboot: false,
-        // Inactive until the operator turns it on, so nothing reaches seats
-        // by accident. Uploading a file does not activate it.
+        // Inactive until the operator uploads a file. The server flips this
+        // to true the moment the upload completes — there is no separate
+        // "push" toggle. Saving metadata alone never reaches seats.
         active: false,
         createdAt: nowIso(),
         updatedBy: api.operator,
@@ -110,7 +110,7 @@ export function ApkUpdates() {
             await api.saveApkUpdate(draft);
             const updated = await api.uploadApkFile(draft.id, file);
             setDraft({ ...updated, targeting: updated.targeting ?? emptyTargeting() });
-            toast(`Uploaded ${file.name}. Hash computed on the server.`, 'success');
+            toast(`Uploaded ${file.name}. Pushing to seats.`, 'success');
             await refresh();
         } catch (e) {
             toast(`Upload failed: ${(e as Error).message}`, 'error');
@@ -141,8 +141,8 @@ export function ApkUpdates() {
                 <div>
                     <h2>APK Updates</h2>
                     <div className="panel-header__sub">
-                        Upload an APK to push it to seats. Seats download it, check its
-                        SHA-256 hash, and install it. Nothing is sent until the update is active.
+                        Upload an APK and it's automatically pushed to every seat on the next poll —
+                        seats download it, verify the SHA-256, and install it via PackageInstaller.
                     </div>
                 </div>
                 <div className="panel-actions">
@@ -226,24 +226,31 @@ export function ApkUpdates() {
                                         onChange={(v) => setDraft({ ...draft, id: v })}
                                         required
                                     />
-                                    <TextField
-                                        label="Package name"
-                                        hint="e.g. aero.panasonic.interactive.seatback"
-                                        value={draft.packageName}
-                                        onChange={(v) => setDraft({ ...draft, packageName: v })}
-                                        required
-                                    />
-                                    <TextField
-                                        label="Version name"
-                                        value={draft.versionName ?? ''}
-                                        onChange={(v) => setDraft({ ...draft, versionName: v })}
-                                    />
-                                    <TextField
-                                        label="Min app version on seat"
-                                        hint="seats below this are skipped"
-                                        value={draft.minAppVersion ?? ''}
-                                        onChange={(v) => setDraft({ ...draft, minAppVersion: v })}
-                                    />
+                                </div>
+                                <div
+                                    className="editor-field editor-field--full"
+                                    style={{ fontSize: '12px', marginTop: '8px', padding: '12px', background: 'var(--color-bg-elev)', borderRadius: '6px' }}
+                                >
+                                    <div>
+                                        <strong>Package name:</strong>{' '}
+                                        {draft.packageName ? (
+                                            <code>{draft.packageName}</code>
+                                        ) : (
+                                            <em style={{ color: 'var(--color-warning)' }}>
+                                                not yet known — read from APK on upload
+                                            </em>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <strong>Version:</strong>{' '}
+                                        {draft.versionName ? (
+                                            <code>v{draft.versionName}</code>
+                                        ) : (
+                                            <em style={{ color: 'var(--color-warning)' }}>
+                                                not yet known — read from APK on upload
+                                            </em>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -254,7 +261,7 @@ export function ApkUpdates() {
                                         <span className="editor-field__label">
                                             Upload .apk
                                             <small className="editor-field__hint">
-                                                {' '}Save the entry first (or just upload; it saves automatically).
+                                                {' '}Drop a .apk file. The package name and version are read from the manifest and pushed to seats as soon as the upload finishes.
                                             </small>
                                         </span>
                                         <input
@@ -298,11 +305,6 @@ export function ApkUpdates() {
 
                             <div className="form-section">
                                 <div className="form-grid">
-                                    <CheckboxField
-                                        label="Active (push to seats)"
-                                        checked={draft.active}
-                                        onChange={(v) => setDraft({ ...draft, active: v })}
-                                    />
                                     <CheckboxField
                                         label="Reboot seat after install"
                                         checked={draft.requireReboot}
