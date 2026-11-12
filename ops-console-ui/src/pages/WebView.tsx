@@ -6,7 +6,7 @@
  * Covers every field of the wire contract:
  *   - id, title, type, url, iconUrl
  *   - active, autoOpen, schedule (start/end)
- *   - targeting: audience, languages, seatNumbers, minAppVersion
+ *   - targeting: audience, languages, seatNumbers
  *   - display: mode, showHeader, showCloseButton, width, height
  *   - metadata: arbitrary key/value pairs
  *   - pinnedToFooter, footerPosition
@@ -521,21 +521,6 @@ export function WebView() {
                                             })
                                         }
                                         placeholder="12A, 12B"
-                                    />
-                                    <TextField
-                                        label="Min app version"
-                                        hint="optional"
-                                        value={draft.targeting.minAppVersion ?? ''}
-                                        onChange={(v) =>
-                                            setDraft({
-                                                ...draft,
-                                                targeting: {
-                                                    ...draft.targeting,
-                                                    minAppVersion: v.trim() || null,
-                                                },
-                                            })
-                                        }
-                                        placeholder="1.2.3"
                                     />
                                 </div>
                             </div>

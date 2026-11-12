@@ -12,7 +12,6 @@ import { Notifications } from './pages/Notifications';
 import { WebView } from './pages/WebView';
 import { Config } from './pages/Config';
 import { Theme } from './pages/Theme';
-import { Wallpaper } from './pages/Wallpaper';
 import { ApkUpdates } from './pages/ApkUpdates';
 import { SearchDashboard } from './pages/SearchDashboard';
 import { ToastProvider } from './lib/toast';
@@ -23,7 +22,6 @@ const TABS = [
     { path: '/webview', label: 'WebView Content' },
     { path: '/config', label: 'Remote Config' },
     { path: '/theme', label: 'Theme' },
-    { path: '/wallpaper', label: 'Wallpapers' },
     { path: '/apk', label: 'APK Updates' },
     { path: '/search', label: 'Search Dashboard' },
 ] as const;
@@ -125,7 +123,6 @@ export function App() {
                     <Route path="/webview" element={<WebView />} />
                     <Route path="/config" element={<Config />} />
                     <Route path="/theme" element={<Theme />} />
-                    <Route path="/wallpaper" element={<Wallpaper />} />
                     <Route path="/apk" element={<ApkUpdates />} />
 
                     <Route path="/search" element={<SearchDashboard />} />

@@ -34,16 +34,15 @@ interface ToggleRow {
 
 /**
  * True if [t] actually narrows the audience — i.e. has a non-default
- * audience, languages, seat numbers, or a min app version. Used by
- * add-form save paths to decide whether to send the targeting block
- * with the payload (null when "broadcast to everyone" is the intent).
+ * audience, languages, or seat numbers. Used by add-form save paths to
+ * decide whether to send the targeting block with the payload (null when
+ * "broadcast to everyone" is the intent).
  */
 function isTargetingMeaningful(t: Targeting | null | undefined): boolean {
     if (!t) return false;
     if (t.audience && t.audience !== 'ALL') return true;
     if (t.languages && t.languages.length > 0) return true;
     if (t.seatNumbers && t.seatNumbers.length > 0) return true;
-    if (t.minAppVersion && t.minAppVersion !== '') return true;
     return false;
 }
 
@@ -58,7 +57,6 @@ function describeTargeting(t: Targeting | null | undefined): string {
     if (t.audience && t.audience !== 'ALL') parts.push(`audience=${t.audience}`);
     if (t.languages?.length) parts.push(`languages=${t.languages.join(',')}`);
     if (t.seatNumbers?.length) parts.push(`seats=${t.seatNumbers.join(',')}`);
-    if (t.minAppVersion) parts.push(`minVer=${t.minAppVersion}`);
     return parts.join(' · ');
 }
 

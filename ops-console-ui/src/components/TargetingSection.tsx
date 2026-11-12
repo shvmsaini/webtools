@@ -89,15 +89,7 @@ export function TargetingSection({ value, onChange, heading, helpText }: Targeti
                     }
                     placeholder="12A, 12B, 14C"
                 />
-                <TextField
-                    label="Min app version"
-                    hint="optional"
-                    value={value.minAppVersion ?? ''}
-                    onChange={(v) =>
-                        onChange({ ...value, minAppVersion: v.trim() || null })
-                    }
-                    placeholder="1.2.3"
-                />
+                {/* Min app version removed - all seats always run same version */}
             </div>
         </div>
     );

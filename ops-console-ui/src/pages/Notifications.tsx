@@ -6,7 +6,7 @@
  * Covers every field of the wire contract:
  *   - id, title, body, iconUrl, ctaUrl
  *   - category, channel, mandatory, autoOpen, expiresAt
- *   - targeting: audience, languages, seatNumbers, minAppVersion
+ *   - targeting: audience, languages, seatNumbers
  *   - createdBy, createdAt (auto-stamped on send)
  */
 
@@ -398,21 +398,6 @@ export function Notifications() {
                                             })
                                         }
                                         placeholder="12A, 12B, 14C"
-                                    />
-                                    <TextField
-                                        label="Min app version"
-                                        hint="optional"
-                                        value={draft.targeting.minAppVersion ?? ''}
-                                        onChange={(v) =>
-                                            setDraft({
-                                                ...draft,
-                                                targeting: {
-                                                    ...draft.targeting,
-                                                    minAppVersion: v.trim() || null,
-                                                },
-                                            })
-                                        }
-                                        placeholder="1.2.3"
                                     />
                                 </div>
                             </div>

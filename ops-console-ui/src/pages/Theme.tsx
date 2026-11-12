@@ -72,8 +72,7 @@ const URL_TOKENS: ReadonlySet<string> = new Set([
     'globalNavBackgroundImage',
 ]);
 
-/**
- * Pre-built themes for seasonal/campaign rollouts.
+pre-built themes for seasonal/campaign rollouts.
  *
  * Operators pick one to populate the draft; they can tweak any token
  * afterwards. backgroundImage stays empty unless the template includes a URL.
@@ -86,9 +85,9 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryDark: '#8b0000',
             primaryLight: '#fff5f5',
             background: '#0d3b1f',
-            backgroundImage: '',
-            sidebarBackgroundImage: '',
-            globalNavBackgroundImage: '',
+            backgroundImage: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=1920&h=1080',
+            sidebarBackgroundImage: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=400&h=1080',
+            globalNavBackgroundImage: 'https://images.unsplash.com/photo-1571902943202-507ec2618e8f?q=80&w=200&h=1080',
             surface: '#1a5c33',
             textPrimary: '#ffffff',
             textMuted: '#d4e8d4',
@@ -110,9 +109,9 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryDark: '#cc6600',
             primaryLight: '#fff8e7',
             background: '#1a0a1f',
-            backgroundImage: '',
-            sidebarBackgroundImage: '',
-            globalNavBackgroundImage: '',
+            backgroundImage: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=1920&h=1080',
+            sidebarBackgroundImage: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=400&h=1080',
+            globalNavBackgroundImage: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?q=80&w=200&h=1080',
             surface: '#3d1f4d',
             textPrimary: '#fff8e7',
             textMuted: '#e6c89c',
@@ -134,9 +133,9 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryDark: '#0d47a1',
             primaryLight: '#e3f2fd',
             background: '#0a3d62',
-            backgroundImage: '',
-            sidebarBackgroundImage: '',
-            globalNavBackgroundImage: '',
+            backgroundImage: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1920&h=1080',
+            sidebarBackgroundImage: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=400&h=1080',
+            globalNavBackgroundImage: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=200&h=1080',
             surface: '#1e5c8a',
             textPrimary: '#ffffff',
             textMuted: '#b3d9ff',
@@ -158,9 +157,9 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryDark: '#cc5500',
             primaryLight: '#fff0e0',
             background: '#1a0a00',
-            backgroundImage: '',
-            sidebarBackgroundImage: '',
-            globalNavBackgroundImage: '',
+            backgroundImage: 'https://images.unsplash.com/photo-1516470556334-102c96023e87?q=80&w=1920&h=1080',
+            sidebarBackgroundImage: 'https://images.unsplash.com/photo-1516470556334-102c96023e87?q=80&w=400&h=1080',
+            globalNavBackgroundImage: 'https://images.unsplash.com/photo-1516470556334-102c96023e87?q=80&w=200&h=1080',
             surface: '#3d1f0a',
             textPrimary: '#ff7518',
             textMuted: '#cc6600',
@@ -182,9 +181,9 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryDark: '#cc0033',
             primaryLight: '#ffe6ec',
             background: '#1a0011',
-            backgroundImage: '',
-            sidebarBackgroundImage: '',
-            globalNavBackgroundImage: '',
+            backgroundImage: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=1920&h=1080',
+            sidebarBackgroundImage: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=400&h=1080',
+            globalNavBackgroundImage: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?q=80&w=200&h=1080',
             surface: '#3d0a22',
             textPrimary: '#ffe6ec',
             textMuted: '#ffb3c8',
@@ -206,9 +205,9 @@ const THEME_TEMPLATES: Array<{ name: string; tokens: Record<string, string> }> =
             primaryDark: '#c2185b',
             primaryLight: '#fce4ec',
             background: '#1a3d1a',
-            backgroundImage: '',
-            sidebarBackgroundImage: '',
-            globalNavBackgroundImage: '',
+            backgroundImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1920&h=1080',
+            sidebarBackgroundImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=400&h=1080',
+            globalNavBackgroundImage: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=200&h=1080',
             surface: '#3d6b3d',
             textPrimary: '#ffffff',
             textMuted: '#c8e6c9',
@@ -253,23 +252,16 @@ function hasTargeting(t: ThemePayload['targeting']): boolean {
     return (
         (t.audience != null && t.audience !== 'ALL') ||
         (t.languages?.length ?? 0) > 0 ||
-        (t.seatNumbers?.length ?? 0) > 0 ||
-        (t.minAppVersion != null && t.minAppVersion !== '')
+        (t.seatNumbers?.length ?? 0) > 0
     );
 }
 
-/**
- * Short, human-readable description of which seats a targeting block
- * scopes to. Used as the badge tooltip so operators can see at a glance
- * why a theme isn't reaching every seat.
- */
 function describeTargeting(t: ThemePayload['targeting']): string {
     if (!t) return 'Broadcast — every seat';
     const parts: string[] = [];
     if (t.audience && t.audience !== 'ALL') parts.push(`audience=${t.audience}`);
     if (t.languages?.length) parts.push(`languages=${t.languages.join(',')}`);
     if (t.seatNumbers?.length) parts.push(`seats=${t.seatNumbers.join(',')}`);
-    if (t.minAppVersion) parts.push(`minVer=${t.minAppVersion}`);
     return parts.length === 0 ? 'Broadcast — every seat' : parts.join(' · ');
 }
 
