@@ -14,6 +14,7 @@ import { Config } from './pages/Config';
 import { Theme } from './pages/Theme';
 import { ApkUpdates } from './pages/ApkUpdates';
 import { SearchDashboard } from './pages/SearchDashboard';
+import { QuizResponseDashboard } from './pages/QuizResponseDashboard';
 import { ToastProvider } from './lib/toast';
 import { api } from './api';
 
@@ -24,6 +25,7 @@ const TABS = [
     { path: '/theme', label: 'Theme' },
     { path: '/apk', label: 'APK Updates' },
     { path: '/search', label: 'Search Dashboard' },
+    { path: '/quiz', label: 'Quiz Analytics' },
 ] as const;
 
 const STORAGE_KEY_THEME = 'ops-console-theme';
@@ -126,6 +128,7 @@ export function App() {
                     <Route path="/apk" element={<ApkUpdates />} />
 
                     <Route path="/search" element={<SearchDashboard />} />
+                    <Route path="/quiz" element={<QuizResponseDashboard />} />
                     <Route path="*" element={<Navigate to="/notifications" replace />} />
                 </Routes>
             </main>

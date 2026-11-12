@@ -69,6 +69,77 @@ function blankExperience(): WebExperience {
     };
 }
 
+/**
+ * Pre-built webview experiences for quick smoke-tests and demos.
+ *
+ * Each template points at a small public asset the seatback can fetch
+ * over HTTPS — useful for confirming that the WebView bridge can reach
+ * the open internet from inside the aircraft network, that video
+ * playback works, etc., without needing a custom CDN upload first.
+ *
+ * The video template wraps the MP4 in a tiny inline `<html>` document
+ * (data: URL) that the dashboard stores as `url`. When the seatback
+ * opens the webview it loads the wrapper, which loads the video with
+ * `autoplay muted playsinline` so it streams on tap-and-go without user
+ * interaction.
+ */
+const WEBVIEW_TEMPLATES: Array<{ name: string; experience: Partial<WebExperience> }> = [
+    {
+        name: '🎬 Video Stream (Big Buck Bunny)',
+        experience: {
+            id: 'video-big-buck-bunny',
+            title: 'Video Stream Demo',
+            type: 'CUSTOM',
+            url:
+                'data:text/html;charset=utf-8,' +
+                encodeURIComponent(
+                    `<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>` +
+                    `html,body{margin:0;height:100%;background:#000;display:flex;align-items:center;justify-content:center}` +
+                    `video{width:100%;height:100%;object-fit:contain;background:#000}</style></head>` +
+                    `<body><video src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4" ` +
+                    `autoplay muted playsinline controls></video></body></html>`
+                ),
+            iconUrl: null,
+            active: true,
+            autoOpen: true,
+            display: {
+                mode: 'FULL_SCREEN',
+                showHeader: true,
+                showCloseButton: true,
+                width: '100%',
+                height: '100%',
+            },
+            pinnedToFooter: false,
+            footerPosition: null,
+            metadata: {
+                template: 'video-stream',
+                videoUrl:
+                    'https://test-videos.co.uk/vids/bigbuckbunny/mp4/av1/360/Big_Buck_Bunny_360_10s_1MB.mp4',
+            },
+        },
+    },
+];
+
+/**
+ * Populate the draft with a pre-built webview template (video stream,
+ * etc.). Preserves the draft's id so repeated clicks don't churn ids.
+ */
+function applyTemplate(template: Partial<WebExperience>) {
+    return (current: WebExperience | null): WebExperience => {
+        const base = current ?? blankExperience();
+        // Preserve id if user has already typed one, otherwise use template's id
+        const merged: WebExperience = {
+            ...base,
+            ...template,
+            id: current ? base.id : template.id ?? base.id,
+            display: { ...base.display, ...(template.display ?? {}) },
+            metadata: { ...base.metadata, ...(template.metadata ?? {}) },
+            targeting: base.targeting ?? emptyTargeting(),
+        };
+        return merged;
+    };
+}
+
 function isoToLocalInput(iso: string | null): string {
     if (!iso) return '';
     return iso.substring(0, 16);
@@ -279,6 +350,25 @@ export function WebView() {
                 </div>
                 <div className="panel-actions">
                     <button className="btn btn-ghost" onClick={refresh}>Refresh</button>
+                    <select
+                        className="btn btn-ghost"
+                        onChange={(e) => {
+                            const idx = parseInt(e.target.value, 10);
+                            if (!isNaN(idx) && WEBVIEW_TEMPLATES[idx]) {
+                                setDraft(applyTemplate(WEBVIEW_TEMPLATES[idx].experience)(draft));
+                                toast(`Template "${WEBVIEW_TEMPLATES[idx].name}" applied — review and save.`, 'success');
+                            }
+                            e.target.value = '';
+                        }}
+                        defaultValue=""
+                        title="Apply a pre-built webview experience"
+                        style={{ paddingRight: '24px' }}
+                    >
+                        <option value="" disabled>📋 Templates…</option>
+                        {WEBVIEW_TEMPLATES.map((t, i) => (
+                            <option key={t.name} value={i}>{t.name}</option>
+                        ))}
+                    </select>
                     <button className="btn btn-primary" onClick={newExperience}>
                         + New Experience
                     </button>

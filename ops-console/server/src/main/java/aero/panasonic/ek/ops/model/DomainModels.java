@@ -39,6 +39,30 @@ public final class DomainModels {
         MODAL, FULL_SCREEN
     }
 
+    /** Quiz type */
+    public enum QuizType {
+        YES_NO, MULTIPLE_CHOICE, RATING, FREE_TEXT
+    }
+
+    /** One option for a quiz question */
+    public record QuizOption(
+            @NotBlank String id,
+            @NotBlank String label,
+            String iconUrl
+    ) {}
+
+    /** Quiz config embedded in a notification */
+    public record QuizConfig(
+            @NotNull QuizType type,
+            @NotBlank String question,
+            List<QuizOption> options,
+            Integer minRating,
+            Integer maxRating,
+            Boolean allowMultiple,
+            Boolean requireResponse,
+            Integer responseTimeoutSeconds
+    ) {}
+
     /** Targeting constraints — all optional; missing = no constraint. */
     public record Targeting(
             String audience,
@@ -75,7 +99,10 @@ public final class DomainModels {
             String expiresAt,
             @NotNull String createdAt,
             String createdBy,
-            Category category
+            Category category,
+            QuizConfig quiz,
+            Boolean collectResponses,
+            String templateId
     ) {}
 
     /**
@@ -242,5 +269,41 @@ public final class DomainModels {
             boolean featureFlagControlled,
             String mappedFeatureFlag,
             Integer orderIndex
+    ) {}
+
+    /**
+     * A single passenger's response to a quiz/survey notification.
+     */
+    public record QuizResponse(
+            @NotBlank String id,
+            @NotBlank String notificationId,
+            String seatNumber,
+            String deviceId,
+            String language,
+            String audience,
+            String optionId,
+            List<String> optionIds,
+            Integer rating,
+            String freeText,
+            @NotNull String respondedAt,
+            Long timeToRespondMs
+    ) {}
+
+    /**
+     * Aggregated summary of responses for one notification.
+     */
+    public record QuizResponseSummary(
+            @NotBlank String notificationId,
+            String notificationTitle,
+            String question,
+            QuizType quizType,
+            Map<String, String> optionLabels,
+            int impressions,
+            int responses,
+            Map<String, Integer> summary,
+            int yesCount,
+            int noCount,
+            Double avgRating,
+            List<String> textResponses
     ) {}
 }

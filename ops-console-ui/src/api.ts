@@ -19,6 +19,8 @@ import type {
     NotificationInput,
     NotificationPayload,
     OperationsBundle,
+    QuizResponse,
+    QuizResponseSummary,
     SearchEvent,
     SearchSubtypeSummary,
     ThemePayload,
@@ -295,6 +297,24 @@ export const api = {
 
     getSearchEventsForDevice(deviceId: string): Promise<SearchEvent[]> {
         return this._fetch(`/api/v1/search/events/devices/${encodeURIComponent(deviceId)}`);
+    },
+
+    /* ---------- Quiz responses ---------- */
+
+    listQuizResponses(): Promise<QuizResponse[]> {
+        return this._fetch('/api/v1/quiz/responses');
+    },
+
+    getQuizResponseSummary(): Promise<QuizResponseSummary[]> {
+        return this._fetch('/api/v1/quiz/summary');
+    },
+
+    getQuizResponsesForNotification(notificationId: string): Promise<QuizResponse[]> {
+        return this._fetch(`/api/v1/quiz/responses/${encodeURIComponent(notificationId)}`);
+    },
+
+    getQuizResponsesForSeat(seat: string): Promise<QuizResponse[]> {
+        return this._fetch(`/api/v1/quiz/responses/seats/${encodeURIComponent(seat)}`);
     },
 
     /* ---------- Health ---------- */

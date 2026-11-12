@@ -30,6 +30,14 @@ interface ToggleRow {
     source: 'flag' | 'menu';
     flag?: FeatureFlagOverride;
     menuItem?: MenuStateItem;
+    /**
+     * Every override the backend has for this flag name, including
+     * the broadcast (untargeted) one. Multiple entries appear when
+     * an operator has pushed per-seat or per-cabin overrides on top
+     * of the broadcast — each variant is one [FeatureFlagOverride]
+     * with its own `targeting` block.
+     */
+    variants: FeatureFlagOverride[];
 }
 
 /**
@@ -44,6 +52,24 @@ function isTargetingMeaningful(t: Targeting | null | undefined): boolean {
     if (t.languages && t.languages.length > 0) return true;
     if (t.seatNumbers && t.seatNumbers.length > 0) return true;
     return false;
+}
+
+/**
+ * An override variant is "broadcast" when its targeting is empty
+ * (null) or scoped to ALL seats — i.e. it's the fleet-wide default.
+ * Per-seat and per-cabin overrides are non-broadcast.
+ */
+function isBroadcastVariant(flag: FeatureFlagOverride): boolean {
+    return !isTargetingMeaningful(flag.targeting);
+}
+
+/**
+ * Pulls the broadcast override out of a row's variants, or undefined if
+ * none has been created yet. The toggle button always operates on the
+ * broadcast; per-seat overrides layered on top are managed separately.
+ */
+function broadcastVariant(row: ToggleRow): FeatureFlagOverride | undefined {
+    return row.variants.find(isBroadcastVariant);
 }
 
 /**
@@ -70,6 +96,16 @@ export function Config() {
     const [settingsErr, setSettingsErr] = useState<string | null>(null);
     const [menuState, setMenuState] = useState<MenuStateReport[] | null>(null);
     const [filter, setFilter] = useState('');
+
+    /**
+     * Currently-expanded flag row, used to render the inline targeting
+     * editor below the toggle grid. Operators click a row to scope
+     * a per-seat / per-cabin override on top of the broadcast one.
+     */
+    const [expandedFlag, setExpandedFlag] = useState<string | null>(null);
+    const [overrideEnabled, setOverrideEnabled] = useState(true);
+    const [overrideReason, setOverrideReason] = useState('');
+    const [overrideTargeting, setOverrideTargeting] = useState<Targeting>(emptyTargeting());
 
     const [wdId, setWdId] = useState('');
     const [wdReason, setWdReason] = useState('');
@@ -134,47 +170,58 @@ export function Config() {
      * Build a unified list of toggles: feature flags + menu items reported
      * by the seatback. Each toggle shows the state in the UI and toggles
      * either an existing flag or creates one bound to the menu item.
+     *
+     * Flags are grouped by name so a single menu item can show every
+     * override variant (broadcast + per-seat + per-cabin) in one row.
+     * The "broadcast" variant — i.e. the override with empty targeting —
+     * is what the toggle button flips.
      */
     const toggleRows: ToggleRow[] = useMemo(() => {
-        const rows: ToggleRow[] = [];
-        const seen = new Set<string>();
+        const rowsByName = new Map<string, ToggleRow>();
 
-        // First: feature flags from backend
+        // Group feature flags from backend by name so each row can show
+        // every variant (broadcast + per-seat overrides) at once.
         for (const flag of flags ?? []) {
-            rows.push({
-                name: flag.name,
-                title: flag.name,
-                cidType: '',
-                enabled: flag.enabled,
-                source: 'flag',
-                flag,
-            });
-            seen.add(flag.name);
+            const existing = rowsByName.get(flag.name);
+            if (existing) {
+                existing.variants.push(flag);
+            } else {
+                rowsByName.set(flag.name, {
+                    name: flag.name,
+                    title: flag.name,
+                    cidType: '',
+                    // Default visible state follows the broadcast variant;
+                    // per-seat variants are listed under the row but the
+                    // toggle button itself only flips the broadcast one.
+                    enabled: isBroadcastVariant(flag) ? flag.enabled : false,
+                    source: 'flag',
+                    variants: [flag],
+                });
+            }
         }
 
         // Second: menu items reported by seatback that aren't in flags yet
         for (const report of menuState ?? []) {
             for (const item of report.items) {
-                // Map menu item to a flag name
                 const flagName =
                     item.mappedFeatureFlag ||
                     item.cidType?.toUpperCase() ||
                     item.title.toUpperCase().replace(/\s+/g, '_');
-                if (seen.has(flagName)) continue;
-                seen.add(flagName);
+                if (rowsByName.has(flagName)) continue;
 
-                rows.push({
+                rowsByName.set(flagName, {
                     name: flagName,
                     title: item.title || flagName,
                     cidType: item.cidType || '',
                     enabled: item.currentlyVisible,
                     source: 'menu',
                     menuItem: item,
+                    variants: [],
                 });
             }
         }
 
-        return rows;
+        return Array.from(rowsByName.values());
     }, [flags, menuState]);
 
     const filteredRows = useMemo(() => {
@@ -189,25 +236,28 @@ export function Config() {
     }, [toggleRows, filter]);
 
     /**
-     * Toggle a row. If it's a known flag, just flip the flag. If it's a
-     * menu item not yet in flags, create a new flag (defaulting to the
-     * current visible state) and immediately toggle.
+     * Toggle a row. Always operates on the broadcast variant so a single
+     * click flips the fleet-wide default without touching any per-seat
+     * overrides layered on top. Per-seat overrides are managed through
+     * the expanded editor (see [addTargetedOverride] / [deleteVariant]).
      */
     async function toggleRow(row: ToggleRow) {
         try {
-            if (row.flag) {
+            const broadcast = broadcastVariant(row);
+            if (broadcast) {
                 await api.saveFeature({
-                    ...row.flag,
-                    enabled: !row.flag.enabled,
+                    ...broadcast,
+                    enabled: !broadcast.enabled,
                     updatedAt: nowIso(),
                     updatedBy: api.operator,
                 });
                 toast(
-                    `${row.flag.name}: ${!row.flag.enabled ? 'ON' : 'OFF'}`,
+                    `${row.name}: ${!broadcast.enabled ? 'ON' : 'OFF'} (fleet)`,
                     'success',
                 );
             } else if (row.menuItem) {
-                // Create a new feature flag for this menu item
+                // Create the broadcast variant for this menu item first
+                // — operators can then layer targeted overrides on top.
                 const newFlag: FeatureFlagOverride = {
                     name: row.name,
                     enabled: !row.menuItem.currentlyVisible,
@@ -215,6 +265,7 @@ export function Config() {
                     expiresAt: null,
                     updatedAt: nowIso(),
                     updatedBy: api.operator,
+                    targeting: null,
                 };
                 await api.saveFeature(newFlag);
                 toast(
@@ -226,6 +277,86 @@ export function Config() {
         } catch (e) {
             toast(`Toggle failed: ${(e as Error).message}`, 'error');
         }
+    }
+
+    /**
+     * Persist a per-seat / per-cabin / per-language override on top of
+     * the broadcast default. Backend deduplicates by
+     * (name + targeting fingerprint), so re-saving the same targeting
+     * just updates the row in place.
+     */
+    async function addTargetedOverride(name: string) {
+        if (!isTargetingMeaningful(overrideTargeting)) {
+            toast('Set at least one targeting field (cabin / languages / seats).', 'error');
+            return;
+        }
+        try {
+            await api.saveFeature({
+                name,
+                enabled: overrideEnabled,
+                reason: overrideReason.trim() || null,
+                expiresAt: null,
+                updatedAt: nowIso(),
+                updatedBy: api.operator,
+                targeting: overrideTargeting,
+            });
+            toast(`Saved targeted override for ${name}.`, 'success');
+            // Reset the form so the next override starts clean
+            setOverrideEnabled(true);
+            setOverrideReason('');
+            setOverrideTargeting(emptyTargeting());
+            await refreshFlags();
+        } catch (e) {
+            toast(`Save failed: ${(e as Error).message}`, 'error');
+        }
+    }
+
+    /**
+     * Delete a single override variant (broadcast or per-seat). Removes
+     * the flag from the bundle entirely; the seatback falls back to its
+     * built-in default for that name.
+     */
+    async function deleteVariant(variant: FeatureFlagOverride) {
+        if (
+            !confirm(
+                `Delete override "${variant.name}"${isBroadcastVariant(variant) ? ' (broadcast)' : ''}?`
+            )
+        ) {
+            return;
+        }
+        try {
+            await api.deleteFeature(variant.name);
+            toast('Override deleted.', 'success');
+            if (expandedFlag === variant.name && isBroadcastVariant(variant)) {
+                setExpandedFlag(null);
+            }
+            await refreshFlags();
+        } catch (e) {
+            toast(`Delete failed: ${(e as Error).message}`, 'error');
+        }
+    }
+
+    /**
+     * Expand the row's targeting editor. Prefills the form with the
+     * first existing per-seat override's targeting if one exists, so
+     * operators can tweak it rather than retype seat numbers.
+     */
+    function expandRow(row: ToggleRow) {
+        if (expandedFlag === row.name) {
+            setExpandedFlag(null);
+            return;
+        }
+        const existingTargeted = row.variants.find((v) => !isBroadcastVariant(v));
+        if (existingTargeted) {
+            setOverrideEnabled(existingTargeted.enabled);
+            setOverrideReason(existingTargeted.reason ?? '');
+            setOverrideTargeting(existingTargeted.targeting ?? emptyTargeting());
+        } else {
+            setOverrideEnabled(!row.enabled);
+            setOverrideReason('');
+            setOverrideTargeting(emptyTargeting());
+        }
+        setExpandedFlag(row.name);
     }
 
     async function addWithdrawal() {
@@ -350,38 +481,241 @@ export function Config() {
                         one below.
                     </div>
                 ) : (
-                    <div className="flag-toggle-grid">
-                        {filteredRows.map((row) => (
-                            <button
-                                key={row.name}
-                                type="button"
-                                className={`flag-toggle ${row.enabled ? 'flag-toggle--on' : 'flag-toggle--off'} ${
-                                    !row.flag ? 'flag-toggle--unset' : ''
-                                }`}
-                                onClick={() => void toggleRow(row)}
-                                title={
-                                    isTargetingMeaningful(row.flag?.targeting)
-                                        ? `${row.enabled ? 'ON' : 'OFF'} — ${describeTargeting(row.flag?.targeting)} — click to ${row.enabled ? 'disable' : 'enable'}`
-                                        : row.cidType
-                                        ? `cidType=${row.cidType}`
-                                        : `${row.enabled ? 'ON' : 'OFF'} — click to ${
-                                              row.enabled ? 'disable' : 'enable'
-                                          }`
-                                }
-                            >
-                                <span className="flag-toggle__name">
-                                    {row.title}
-                                </span>
-                                <span className="flag-toggle__state">
-                                    {row.enabled ? 'ON' : 'OFF'}
-                                </span>
-                                <span className="flag-toggle__source">
-                                    {row.source === 'flag'
-                                        ? row.flag?.updatedBy || 'flag'
-                                        : 'menu'}
-                                </span>
-                            </button>
-                        ))}
+                    <div className="flag-toggle-list">
+                        {filteredRows.map((row) => {
+                            const broadcast = broadcastVariant(row);
+                            const targetedVariants = row.variants.filter(
+                                (v) => !isBroadcastVariant(v),
+                            );
+                            const expanded = expandedFlag === row.name;
+                            return (
+                                <div
+                                    key={row.name}
+                                    className={`flag-toggle-row ${
+                                        expanded ? 'flag-toggle-row--expanded' : ''
+                                    }`}
+                                    style={{
+                                        border: '1px solid var(--color-border)',
+                                        borderRadius: '6px',
+                                        marginBottom: '6px',
+                                        background: 'var(--color-bg-elev)',
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px',
+                                            padding: '6px 8px',
+                                        }}
+                                    >
+                                        <button
+                                            type="button"
+                                            className={`flag-toggle ${row.enabled ? 'flag-toggle--on' : 'flag-toggle--off'} ${
+                                                !broadcast ? 'flag-toggle--unset' : ''
+                                            }`}
+                                            onClick={() => void toggleRow(row)}
+                                            disabled={!broadcast && !row.menuItem}
+                                            title={
+                                                broadcast
+                                                    ? `Broadcast: ${row.enabled ? 'ON' : 'OFF'} — click to ${row.enabled ? 'disable' : 'enable'} for every seat`
+                                                    : `No broadcast override yet — click to create one ${row.enabled ? 'OFF' : 'ON'}`
+                                            }
+                                            style={{ flex: 1 }}
+                                        >
+                                            <span className="flag-toggle__name">{row.title}</span>
+                                            <span className="flag-toggle__state">
+                                                {row.enabled ? 'ON' : 'OFF'}
+                                            </span>
+                                            <span className="flag-toggle__source">
+                                                {broadcast
+                                                    ? broadcast.updatedBy || 'flag'
+                                                    : 'menu'}
+                                            </span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-ghost btn-sm"
+                                            onClick={() => expandRow(row)}
+                                            disabled={!row.menuItem && row.variants.length === 0 && !broadcast}
+                                            title={
+                                                expanded
+                                                    ? 'Collapse targeted overrides'
+                                                    : 'Add or edit per-seat / per-cabin overrides'
+                                            }
+                                        >
+                                            🎯 {targetedVariants.length > 0
+                                                ? `${targetedVariants.length}`
+                                                : '+'}
+                                        </button>
+                                    </div>
+
+                                    {expanded && (
+                                        <div
+                                            style={{
+                                                padding: '12px',
+                                                borderTop: '1px solid var(--color-border)',
+                                                background: 'var(--color-bg-base)',
+                                            }}
+                                        >
+                                            {/* List every existing variant so the operator can see what they've stacked */}
+                                            {row.variants.length > 0 && (
+                                                <div style={{ marginBottom: '12px' }}>
+                                                    <div
+                                                        style={{
+                                                            fontSize: '11px',
+                                                            fontWeight: 600,
+                                                            color: 'var(--color-text-muted)',
+                                                            textTransform: 'uppercase',
+                                                            marginBottom: '6px',
+                                                        }}
+                                                    >
+                                                        Existing overrides ({row.variants.length})
+                                                    </div>
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        {row.variants.map((v, i) => (
+                                                            <div
+                                                                key={`${v.name}-${i}`}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    justifyContent: 'space-between',
+                                                                    padding: '6px 8px',
+                                                                    border: '1px solid var(--color-border)',
+                                                                    borderRadius: '4px',
+                                                                    background: 'var(--color-bg-elev)',
+                                                                    fontSize: '12px',
+                                                                }}
+                                                            >
+                                                                <div>
+                                                                    <span
+                                                                        className={`badge ${v.enabled ? 'badge--ok' : 'badge--off'}`}
+                                                                        style={{ marginRight: '6px' }}
+                                                                    >
+                                                                        {v.enabled ? 'ON' : 'OFF'}
+                                                                    </span>
+                                                                    <code style={{ marginRight: '6px' }}>
+                                                                        {v.targeting
+                                                                            ? describeTargeting(v.targeting)
+                                                                            : 'broadcast'}
+                                                                    </code>
+                                                                    {v.reason && (
+                                                                        <span
+                                                                            style={{
+                                                                                color: 'var(--color-text-muted)',
+                                                                                fontSize: '11px',
+                                                                            }}
+                                                                        >
+                                                                            — {v.reason}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn btn-danger btn-sm"
+                                                                    onClick={() => void deleteVariant(v)}
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Add a new targeted override */}
+                                            <div
+                                                style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: 600,
+                                                    color: 'var(--color-text-muted)',
+                                                    textTransform: 'uppercase',
+                                                    marginBottom: '6px',
+                                                }}
+                                            >
+                                                Add targeted override
+                                            </div>
+                                            <div
+                                                style={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: 'auto 1fr',
+                                                    gap: '8px',
+                                                    alignItems: 'center',
+                                                }}
+                                            >
+                                                <label
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        color: 'var(--color-text-muted)',
+                                                    }}
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={overrideEnabled}
+                                                        onChange={(e) => setOverrideEnabled(e.target.checked)}
+                                                        style={{ marginRight: '6px' }}
+                                                    />
+                                                    Enabled
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Reason (optional)"
+                                                    value={overrideReason}
+                                                    onChange={(e) => setOverrideReason(e.target.value)}
+                                                />
+                                            </div>
+                                            <div style={{ marginTop: '8px' }}>
+                                                <TargetingSection
+                                                    value={overrideTargeting}
+                                                    onChange={setOverrideTargeting}
+                                                    heading=""
+                                                    helpText="Scope this override to specific seats / languages / cabin. Leave blank to broadcast to the whole fleet."
+                                                />
+                                            </div>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: '8px',
+                                                    marginTop: '8px',
+                                                    justifyContent: 'flex-end',
+                                                }}
+                                            >
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-ghost btn-sm"
+                                                    onClick={() => {
+                                                        setOverrideEnabled(true);
+                                                        setOverrideReason('');
+                                                        setOverrideTargeting(emptyTargeting());
+                                                    }}
+                                                >
+                                                    Reset
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-sm"
+                                                    onClick={() => void addTargetedOverride(row.name)}
+                                                    disabled={!isTargetingMeaningful(overrideTargeting)}
+                                                    title={
+                                                        isTargetingMeaningful(overrideTargeting)
+                                                            ? 'Save override for the targeted seats'
+                                                            : 'Set a targeting field first'
+                                                    }
+                                                >
+                                                    Save Override
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>

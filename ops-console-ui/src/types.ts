@@ -8,6 +8,8 @@
 
 export type DeliveryChannel = 'POLL' | 'MQTT_PUSH' | 'WEBHOOK';
 
+// ---------- Enums ----------
+
 export type Category =
     | 'OPERATIONAL'
     | 'GATE_CHANGE'
@@ -15,7 +17,10 @@ export type Category =
     | 'ADVISORY'
     | 'ANNOUNCEMENT'
     | 'PROMOTION'
-    | 'CHAIRMAN_MESSAGE';
+    | 'CHAIRMAN_MESSAGE'
+    | 'QUIZ'
+    | 'SURVEY'
+    | 'POLLERT';
 
 export type WebExperienceType =
     | 'QUIZ'
@@ -29,6 +34,98 @@ export type WebExperienceType =
 export type DisplayMode = 'MODAL' | 'FULL_SCREEN';
 
 export type Audience = 'ALL' | 'FIRST' | 'BUSINESS' | 'ECONOMY';
+
+// ---------- Quiz/notification types ----------
+
+export type QuizType = 'YES_NO' | 'MULTIPLE_CHOICE' | 'RATING' | 'FREE_TEXT';
+
+export interface QuizOption {
+    id: string;
+    label: string;
+    iconUrl?: string | null;
+}
+
+export interface QuizConfig {
+    type: QuizType;
+    question: string;
+    options?: QuizOption[] | null;
+    minRating?: number | null;
+    maxRating?: number | null;
+    allowMultiple?: boolean;
+    requireResponse?: boolean;
+    responseTimeoutSeconds?: number | null;
+}
+
+export interface NotificationPayload {
+    id: string;
+    title: string;
+    body?: string;
+    iconUrl?: string | null;
+    ctaUrl?: string | null;
+    autoOpen: boolean;
+    mandatory: boolean;
+    channel: DeliveryChannel;
+    targeting: Targeting;
+    expiresAt?: string | null;
+    createdAt: string;
+    createdBy?: string;
+    category: Category;
+    /** Quiz configuration for notifications that collect responses */
+    quiz?: QuizConfig | null;
+    /** Template ID this notification was created from (null for original) */
+    templateId?: string | null;
+    /** Enable response ingestion and analytics */
+    collectResponses?: boolean;
+}
+
+export interface NotificationInput = Omit<NotificationPayload, 'createdAt' | 'autoOpen'> & {
+    createdAt?: string;
+    autoOpen?: boolean;
+};
+
+// ---------- Response tracking ----------
+
+export interface QuizResponse {
+    id: string;
+    notificationId: string;
+    seatNumber?: string | null;
+    deviceId?: string | null;
+    language?: string | null;
+    audience?: string | null;
+    optionId?: string | null;
+    optionIds?: string[] | null;
+    rating?: number | null;
+    freeText?: string | null;
+    respondedAt: string;
+    timeToRespondMs?: number | null;
+}
+
+export interface QuizResponseSummary {
+    notificationId: string;
+    notificationTitle: string;
+    question: string;
+    quizType: QuizType;
+    optionLabels?: Record<string, string>;
+    toggle?: boolean;
+    /** Number of times this notification has been shown */
+    impressions: number;
+    /** Number of times passengers responded */
+    responses: number;
+    summary?: Record<string, number>; // optionId -> count for multiple choice
+    yesCount?: number;
+    noCount?: number;
+    avgRating?: number;
+    textResponses?: string[];
+}
+
+export interface NotificationTemplate {
+    id: string;
+    label: string;
+    category: Category;
+    icon?: string;
+    /** Payload to use as starting point */
+    payload: Omit<NotificationInput, 'id' | 'title' | 'body' | 'createdAt' | 'createdBy'>;
+}
 
 // ---------- Shared sub-records ----------
 

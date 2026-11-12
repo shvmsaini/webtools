@@ -82,6 +82,165 @@ function localInputToIso(local: string): string | null {
     return new Date(local).toISOString();
 }
 
+// Quiz/yes-no response template
+const YES_NO_OPTIONS: QuizOption[] = [
+    { id: 'yes', label: 'Yes' },
+    { id: 'no', label: 'No' }
+];
+
+const QUICK_QUIZ_OPTIONS: QuizOption[] = [
+    { id: 'excellent', label: 'Excellent' },
+    { id: 'good', label: 'Good' },
+    { id: 'fair', label: 'Fair' },
+    { id: 'poor', label: 'Poor' }
+];
+
+const CATEGORIES: ReadonlyArray<{ value: Category; label: string }> = [
+    { value: 'OPERATIONAL', label: 'Operational' },
+    { value: 'GATE_CHANGE', label: 'Gate Change' },
+    { value: 'WEATHER', label: 'Weather' },
+    { value: 'ADVISORY', label: 'Advisory' },
+    { value: 'ANNOUNCEMENT', label: 'Announcement' },
+    { value: 'PROMOTION', label: 'Promotion' },
+    { value: 'CHAIRMAN_MESSAGE', label: 'Chairman Message' },
+    { value: 'QUIZ', label: 'Quiz' },
+    { value: 'SURVEY', label: 'Survey' },
+    { value: 'POLLERT', label: 'Poll/Simple Question' },
+];
+
+const QUIZ_TYPES: ReadonlyArray<{ value: QuizType; label: string }> = [
+    { value: 'YES_NO', label: 'Yes/No' },
+    { value: 'MULTIPLE_CHOICE', label: 'Multiple Choice' },
+    { value: 'RATING', label: 'Rating (1-5)' },
+    { value: 'FREE_TEXT', label: 'Free Text' }
+];
+
+/** Predefined templates for quick notification creation */
+const TEMPLATES: NotificationTemplate[] = [
+    {
+        id: 'gateway-change',
+        label: '🛫 Gate Change Notification',
+        category: 'GATE_CHANGE',
+        icon: '📍',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: false,
+        }
+    },
+    {
+        id: 'weather-delay',
+        label: '⛈ Weather Advisory',
+        category: 'WEATHER',
+        icon: '⛈',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: false,
+            mandatory: true,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: false,
+        }
+    },
+    {
+        id: 'chairman-message',
+        label: '🎙 Chairman Message',
+        category: 'CHAIRMAN_MESSAGE',
+        icon: '🎙',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: false,
+            mandatory: true,
+            channel: 'POLL',
+            targeting: { audience: 'ALL', languages: [], seatNumbers: [], minAppVersion: null },
+            expiresAt: null,
+            collectResponses: false,
+        }
+    },
+    {
+        id: 'yes-no-quick',
+        label: '✅ Yes/No Question',
+        category: 'POLLERT',
+        icon: '❓',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: true,
+            quiz: {
+                type: 'YES_NO',
+                question: 'Your question here',
+                options: YES_NO_OPTIONS,
+                allowMultiple: false,
+                requireResponse: false,
+                responseTimeoutSeconds: 60
+            }
+        }
+    },
+    {
+        id: 'quick-survey',
+        label: '📊 Quick Satisfaction Survey',
+        category: 'SURVEY',
+        icon: '📊',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: true,
+            quiz: {
+                type: 'MULTIPLE_CHOICE',
+                question: 'How satisfied are you with the service?',
+                options: QUICK_QUIZ_OPTIONS,
+                allowMultiple: false,
+                requireResponse: false,
+                responseTimeoutSeconds: 60
+            }
+        }
+    },
+    {
+        id: 'rating-prompt',
+        label: '⭐ Rating Prompt',
+        category: 'QUIZ',
+        icon: '⭐',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: true,
+            quiz: {
+                type: 'RATING',
+                question: 'Rate our new feature (1-5)',
+                options: null,
+                minRating: 1,
+                maxRating: 5,
+                allowMultiple: false,
+                requireResponse: false,
+                responseTimeoutSeconds: 60
+            }
+        }
+    }
+];
+
 export function Notifications() {
     const toast = useToast();
     const [items, setItems] = useState<NotificationPayload[] | null>(null);
@@ -252,6 +411,41 @@ export function Notifications() {
                         <div className="editor-empty">
                             Select a notification to edit, or click{' '}
                             <strong>+ New Notification</strong>.
+                            <div style={{ marginTop: 'var(--sp-4)', padding: 'var(--sp-3)', background: 'var(--color-bg-subtle)', borderRadius: 'var(--radius)' }}>
+                                <h4 style={{ marginBottom: 'var(--sp-2)' }}>📋 Quick Templates</h4>
+                                <select
+                                    className="input"
+                                    value=""
+                                    onChange={(e) => {
+                                        const templateId = e.target.value;
+                                        if (!templateId) return;
+                                        e.target.value = '';
+                                        const tmpl = TEMPLATES.find(t => t.id === templateId);
+                                        if (!tmpl) return;
+                                        const newDraft: NotificationInput = {
+                                            ...tmpl.payload,
+                                            id: `notif-${Date.now()}`,
+                                            title: '',
+                                            body: '',
+                                            category: tmpl.category,
+                                            createdBy: api.operator,
+                                            createdAt: nowIso(),
+                                            targeting: tmpl.payload.targeting,
+                                        };
+                                        setDraft(newDraft);
+                                        toast(`Created from template: ${tmpl.label}`, 'success');
+                                    }}
+                                    style={{ minWidth: '240px' }}
+                                >
+                                    <option value="">— Choose a template —</option>
+                                    {TEMPLATES.map(t => (
+                                        <option key={t.id} value={t.id}>{t.icon} {t.label}</option>
+                                    ))}
+                                </select>
+                                <p style={{ marginTop: 'var(--sp-1)', fontSize: '12px', color: 'var(--color-text-faint)' }}>
+                                    Quick-start with predefined message types and quizzes
+                                </p>
+                            </div>
                         </div>
                     ) : (
                         <form
@@ -351,6 +545,164 @@ export function Notifications() {
                                 </div>
                             </div>
 
+                            {/* Quiz/Survey Configuration */}
+                            {['QUIZ', 'SURVEY', 'POLLERT'].includes(draft.category) && (
+                                <div className="form-section">
+                                    <h3>Quiz / Survey Configuration</h3>
+                                    <div className="form-section__help">
+                                        Enable response collection and configure the question type.
+                                    </div>
+                                    <div className="form-grid">
+                                        <CheckboxField
+                                            label="Collect responses from passengers"
+                                            checked={draft.collectResponses ?? false}
+                                            onChange={(v) => setDraft({ ...draft, collectResponses: v })}
+                                        />
+                                        <SelectField
+                                            label="Quiz Type"
+                                            value={draft.quiz?.type ?? 'YES_NO'}
+                                            onChange={(v) => setDraft({
+                                                ...draft,
+                                                quiz: {
+                                                    ...draft.quiz,
+                                                    type: v as QuizType,
+                                                    question: draft.quiz?.question ?? '',
+                                                    options: v === 'YES_NO' ? YES_NO_OPTIONS : v === 'RATING' ? null : draft.quiz?.options ?? []
+                                                }
+                                            })}
+                                            options={QUIZ_TYPES}
+                                            hint="Type of response to collect"
+                                        />
+                                        <TextField
+                                            label="Question"
+                                            hint="Question to ask passengers"
+                                            full
+                                            value={draft.quiz?.question ?? ''}
+                                            onChange={(v) => setDraft({
+                                                ...draft,
+                                                quiz: { ...draft.quiz, question: v }
+                                            })}
+                                            placeholder="Are you enjoying the new service?"
+                                            required={draft.collectResponses}
+                                        />
+                                        {draft.quiz?.type === 'MULTIPLE_CHOICE' && (
+                                            <div className="quiz-options-editor" style={{ padding: 'var(--sp-2)', background: 'var(--color-bg-subtle)', borderRadius: 'var(--radius)', gridColumn: 'span 2' }}>
+                                                <h4>Options</h4>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-1)' }}>
+                                                    {(draft.quiz.options ?? []).map((opt, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', gap: 'var(--sp-1)', alignItems: 'center' }}>
+                                                            <TextField
+                                                                label={`Option ${idx + 1}`}
+                                                                value={opt.label}
+                                                                onChange={(v) => {
+                                                                    const newOptions = [...(draft.quiz?.options ?? [])];
+                                                                    newOptions[idx] = { ...opt, label: v };
+                                                                    setDraft({
+                                                                        ...draft,
+                                                                        quiz: { ...draft.quiz, options: newOptions }
+                                                                    });
+                                                                }}
+                                                                required
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-danger btn-sm"
+                                                                onClick={() => {
+                                                                    setDraft({
+                                                                        ...draft,
+                                                                        quiz: {
+                                                                            ...draft.quiz,
+                                                                            options: (draft.quiz?.options ?? []).filter((_, i) => i !== idx)
+                                                                        }
+                                                                    });
+                                                                }}
+                                                            >
+                                                                Remove
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-ghost btn-sm"
+                                                        onClick={() => {
+                                                            const newOptions = [...(draft.quiz?.options ?? []), { id: `opt-${Date.now()}`, label: 'New option' }];
+                                                            setDraft({
+                                                                ...draft,
+                                                                quiz: { ...draft.quiz, options: newOptions }
+                                                            });
+                                                        }}
+                                                    >
+                                                        + Add Option
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {draft.quiz?.type === 'RATING' && (
+                                            <div className="rating-config" style={{ gridColumn: 'span 2' }}>
+                                                <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}>
+                                                    <TextField
+                                                        label="Min Rating"
+                                                        type="number"
+                                                        value={String(draft.quiz.minRating ?? 1)}
+                                                        onChange={(v) => setDraft({
+                                                            ...draft,
+                                                            quiz: { ...draft.quiz, minRating: v ? parseInt(v) : 1 }
+                                                        })}
+                                                        style={{ flex: 1 }}
+                                                    />
+                                                    <TextField
+                                                        label="Max Rating"
+                                                        type="number"
+                                                        value={String(draft.quiz.maxRating ?? 5)}
+                                                        onChange={(v) => setDraft({
+                                                            ...draft,
+                                                            quiz: { ...draft.quiz, maxRating: v ? parseInt(v) : 5 }
+                                                        })}
+                                                        style={{ flex: 1 }}
+                                                    />
+                                                </div>
+                                                <p style={{ marginTop: 'var(--sp-1)', fontSize: '12px', color: 'var(--color-text-faint)' }}>
+                                                    Configure the rating scale (e.g., 1-5 stars)
+                                                </p>
+                                            </div>
+                                        )}
+                                        {draft.quiz?.type === 'FREE_TEXT' && (
+                                            <TextField
+                                                label="Response Field Label"
+                                                hint="Optional hint text for text input"
+                                                full
+                                                value={draft.quiz.options?.[0]?.label ?? 'Your answer'}
+                                                onChange={(v) => setDraft({
+                                                    ...draft,
+                                                    quiz: {
+                                                        ...draft.quiz,
+                                                        options: [{ id: 'text', label: v || 'Your answer' }]
+                                                    }
+                                                })}
+                                            />
+                                        )}
+                                        <CheckboxField
+                                            label="Require response before dismiss"
+                                            checked={draft.quiz?.requireResponse ?? false}
+                                            onChange={(v) => setDraft({
+                                                ...draft,
+                                                quiz: { ...draft.quiz, requireResponse: v }
+                                            })}
+                                        />
+                                        <TextField
+                                            label="Response Timeout (seconds)"
+                                            type="number"
+                                            value={String(draft.quiz?.responseTimeoutSeconds ?? 60)}
+                                            onChange={(v) => setDraft({
+                                                ...draft,
+                                                quiz: { ...draft.quiz, responseTimeoutSeconds: v ? parseInt(v) : 60 }
+                                            })}
+                                            hint="Auto-forward after this time"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="form-section">
                                 <h3>Targeting</h3>
                                 <div className="form-section__help">
@@ -398,24 +750,6 @@ export function Notifications() {
                                             })
                                         }
                                         placeholder="12A, 12B, 14C"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="form-section">
-                                <h3>Provenance</h3>
-                                <div className="form-grid">
-                                    <TextField
-                                        label="Created by"
-                                        value={draft.createdBy ?? api.operator}
-                                        onChange={(v) => setDraft({ ...draft, createdBy: v })}
-                                    />
-                                    <TextField
-                                        label="Created at"
-                                        hint="auto-stamped on send"
-                                        value={draft.createdAt ?? ''}
-                                        onChange={(v) => setDraft({ ...draft, createdAt: v })}
-                                        placeholder="ISO-8601"
                                     />
                                 </div>
                             </div>

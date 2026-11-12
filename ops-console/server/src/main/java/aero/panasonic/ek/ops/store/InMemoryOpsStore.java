@@ -8,6 +8,8 @@ import aero.panasonic.ek.ops.model.DomainModels.MediaWithdrawal;
 import aero.panasonic.ek.ops.model.DomainModels.MenuStateReport;
 import aero.panasonic.ek.ops.model.DomainModels.NotificationPayload;
 import aero.panasonic.ek.ops.model.DomainModels.OperationsBundle;
+import aero.panasonic.ek.ops.model.DomainModels.QuizResponse;
+import aero.panasonic.ek.ops.model.DomainModels.QuizResponseSummary;
 import aero.panasonic.ek.ops.model.DomainModels.ThemePayload;
 import aero.panasonic.ek.ops.model.DomainModels.Wallpaper;
 import aero.panasonic.ek.ops.model.DomainModels.WebExperience;
@@ -46,6 +48,10 @@ public class InMemoryOpsStore {
     private final ConcurrentHashMap<String, ApkUpdate> apkUpdates = new ConcurrentHashMap<>();
     // updateId + deviceId -> latest status a seat reported for that update
     private final ConcurrentHashMap<String, ApkUpdateStatus> apkUpdateStatuses = new ConcurrentHashMap<>();
+    // Quiz responses storage
+    private final ConcurrentHashMap<String, QuizResponse> quizResponses = new ConcurrentHashMap<>();
+    // Notification impressions tracker (notificationId -> count)
+    private final ConcurrentHashMap<String, Integer> quizImpressions = new ConcurrentHashMap<>();
 
     public InMemoryOpsStore() {
         // Themes ship with a default palette so the seatback has a baseline
@@ -114,7 +120,10 @@ public class InMemoryOpsStore {
                 n.expiresAt(),
                 Instant.now().toString(),
                 n.createdBy(),
-                n.category()
+                n.category(),
+                n.quiz(),
+                n.collectResponses(),
+                n.templateId()
         );
         notifications.put(n.id(), stamped);
         return stamped;
@@ -406,6 +415,134 @@ public class InMemoryOpsStore {
         );
         apkUpdateStatuses.put(key, stamped);
         return stamped;
+    }
+
+    // ---------- Quiz/survey responses ----------
+
+    /**
+     * Ingest a passenger's quiz response.
+     */
+    public QuizResponse saveQuizResponse(QuizResponse response) {
+        String key = response.id() + ":" + response.notificationId();
+        quizResponses.put(key, response);
+        return response;
+    }
+
+    /**
+     * List all quiz responses across all notifications.
+     */
+    public List<QuizResponse> listQuizResponses() {
+        return new ArrayList<>(quizResponses.values());
+    }
+
+    /**
+     * Get responses for a specific notification.
+     */
+    public List<QuizResponse> listQuizResponsesByNotification(String notificationId) {
+        return quizResponses.values().stream()
+                .filter(r -> notificationId.equals(r.notificationId()))
+                .sorted(Comparator.comparing(QuizResponse::respondedAt).reversed())
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * Get responses from a specific seat.
+     */
+    public List<QuizResponse> listQuizResponsesBySeat(String seatNumber) {
+        return quizResponses.values().stream()
+                .filter(r -> seatNumber.equals(r.seatNumber()) || seatNumber.equals(r.deviceId()))
+                .sorted(Comparator.comparing(QuizResponse::respondedAt).reversed())
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * Track that a quiz notification has been shown to a passenger.
+     */
+    public void trackQuizImpression(String notificationId) {
+        quizImpressions.merge(notificationId, 1, Integer::sum);
+    }
+
+    /**
+     * Get aggregated summary of responses per notification.
+     */
+    public List<QuizResponseSummary> getQuizResponseSummary() {
+        // 1. Get all notifications that have collectResponses=true (implies they're quiz/survey types)
+        Map<String, NotificationPayload> quizNotifs = listNotifications().stream()
+                .filter(n -> Boolean.TRUE.equals(n.collectResponses()))
+                .collect(Collectors.toMap(NotificationPayload::id, n -> n));
+
+        List<QuizResponseSummary> result = new ArrayList<>();
+        for (Map.Entry<String, NotificationPayload> entry : quizNotifs.entrySet()) {
+            String notificationId = entry.getKey();
+            NotificationPayload n = entry.getValue();
+
+            // Count responses for this notification
+            List<QuizResponse> resps = listQuizResponsesByNotification(notificationId);
+            int responses = resps.size();
+            int impressions = quizImpressions.getOrDefault(notificationId, 0);
+
+            // Aggregate by quiz type
+            Map<String, Integer> summary = new LinkedHashMap<>();
+            int yesCount = 0;
+            int noCount = 0;
+            double totalRating = 0;
+            int ratingCount = 0;
+            List<String> textResponses = new ArrayList<>();
+
+            for (QuizResponse r : resps) {
+                if (n.quiz() != null) {
+                    switch (n.quiz().type()) {
+                        case YES_NO:
+                            if ("yes".equals(r.optionId())) yesCount++;
+                            if ("no".equals(r.optionId())) noCount++;
+                            break;
+                        case RATING:
+                            if (r.rating() != null) {
+                                totalRating += r.rating();
+                                ratingCount++;
+                            }
+                            break;
+                        case MULTIPLE_CHOICE:
+                            String optionId = r.optionId();
+                            if (optionId != null) {
+                                summary.merge(optionId, 1, Integer::sum);
+                            }
+                            break;
+                        case FREE_TEXT:
+                            if (r.freeText() != null && !r.freeText().trim().isEmpty()) {
+                                textResponses.add(r.freeText().trim());
+                            }
+                            break;
+                    }
+                }
+            }
+
+            // Map option IDs to labels for display
+            Map<String, String> optionLabels = new LinkedHashMap<>();
+            if (n.quiz() != null && n.quiz().options() != null) {
+                for (DomainModels.QuizOption opt : n.quiz().options()) {
+                    optionLabels.put(opt.id(), opt.label());
+                }
+            }
+
+            Double avgRating = ratingCount > 0 ? totalRating / ratingCount : null;
+
+            result.add(new QuizResponseSummary(
+                    notificationId,
+                    n.title(),
+                    n.quiz() != null ? n.quiz().question() : "",
+                    n.quiz() != null ? n.quiz().type() : null,
+                    optionLabels,
+                    impressions,
+                    responses,
+                    summary,
+                    yesCount,
+                    noCount,
+                    avgRating,
+                    new ArrayList<>(textResponses)
+            ));
+        }
+        return result;
     }
 
     public List<ApkUpdateStatus> listApkUpdateStatuses(String updateId) {
