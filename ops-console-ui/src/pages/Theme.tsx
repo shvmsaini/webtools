@@ -72,7 +72,8 @@ const URL_TOKENS: ReadonlySet<string> = new Set([
     'globalNavBackgroundImage',
 ]);
 
-pre-built themes for seasonal/campaign rollouts.
+/**
+ * Pre-built themes for seasonal/campaign rollouts.
  *
  * Operators pick one to populate the draft; they can tweak any token
  * afterwards. backgroundImage stays empty unless the template includes a URL.
