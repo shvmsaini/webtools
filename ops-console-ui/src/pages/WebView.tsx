@@ -209,14 +209,33 @@ export function WebView() {
                 autoOpen: draft.autoOpen ?? true,
                 mandatory: false,
                 channel: 'POLL',
-                targeting: emptyTargeting(),
+                // Inherit the webview's targeting so the notification
+                // popup announcing the webview only goes to the same
+                // seats the webview itself is targeted at. Previously
+                // this used emptyTargeting() which broadcast the popup
+                // to every seat — operators pushing a per-seat webview
+                // saw the popup on every seatback and mistook it for
+                // the webview itself leaking. Seat-side filters work
+                // correctly; the leak was the dashboard creating an
+                // un-targeted companion notification.
+                targeting: draft.targeting,
                 expiresAt: null,
                 createdAt: nowIso(),
                 createdBy: api.operator,
                 category: 'OPERATIONAL',
             });
             setSelectedId(id);
-            toast(`Sent "${draft.title}" to fleet — notification posted.`, 'success');
+            // Toast copy used to say "to fleet" even when targeting a
+            // single seat, which misled operators into thinking the
+            // push was broadcast. Reflect the actual targeting.
+            const seatList = draft.targeting.seatNumbers?.filter(Boolean) ?? [];
+            const audienceLabel = !draft.targeting.audience || draft.targeting.audience === 'ALL'
+                ? 'fleet'
+                : draft.targeting.audience.toLowerCase();
+            const target = seatList.length > 0
+                ? `seat ${seatList.join(', ')}`
+                : `${audienceLabel} audience`;
+            toast(`Sent "${draft.title}" to ${target} — notification posted.`, 'success');
             await refresh();
         } catch (e) {
             toast(`Send failed: ${(e as Error).message}`, 'error');
