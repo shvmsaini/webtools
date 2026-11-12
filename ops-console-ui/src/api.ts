@@ -285,6 +285,18 @@ export const api = {
         return this._fetch('/api/v1/search/events/summary');
     },
 
+    getSearchSeats(): Promise<string[]> {
+        return this._fetch('/api/v1/search/events/seats');
+    },
+
+    getSearchEventsForSeat(seat: string): Promise<SearchEvent[]> {
+        return this._fetch(`/api/v1/search/events/seats/${encodeURIComponent(seat)}`);
+    },
+
+    getSearchEventsForDevice(deviceId: string): Promise<SearchEvent[]> {
+        return this._fetch(`/api/v1/search/events/devices/${encodeURIComponent(deviceId)}`);
+    },
+
     /* ---------- Health ---------- */
 
     async health(): Promise<boolean> {

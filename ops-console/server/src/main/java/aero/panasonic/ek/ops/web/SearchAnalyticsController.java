@@ -16,9 +16,12 @@ import java.util.Map;
 /**
  * REST endpoints for search analytics.
  *
- *   POST /api/v1/search/events         Seatback posts a typed query event
- *   GET  /api/v1/search/events/summary Dashboard reads aggregated stats
- *   GET  /api/v1/search/events/recent  Dashboard reads recent events (per subtype)
+ *   POST /api/v1/search/events                       Seatback posts a typed query event
+ *   GET  /api/v1/search/events/summary               Dashboard reads aggregated stats
+ *   GET  /api/v1/search/events/recent                Dashboard reads recent events (per subtype)
+ *   GET  /api/v1/search/events/seats                 Dashboard reads the set of known seat keys
+ *   GET  /api/v1/search/events/seats/{seat}          Dashboard reads recent events for one seat
+ *   GET  /api/v1/search/events/devices/{deviceId}    Dashboard reads recent events for one device
  *
  * The store is in-memory; data resets when the backend restarts.
  */
@@ -36,7 +39,10 @@ public class SearchAnalyticsController {
     public Map<String, Object> record(@Valid @RequestBody SearchAnalyticsEvent event) {
         // Stamp occurredAt server-side if the client didn't supply it.
         SearchAnalyticsEvent stamped = (event.occurredAt() == null || event.occurredAt().isBlank())
-                ? new SearchAnalyticsEvent(event.subtype(), event.query(), event.resultCount(), Instant.now().toString())
+                ? new SearchAnalyticsEvent(
+                    event.subtype(), event.query(), event.resultCount(),
+                    Instant.now().toString(),
+                    event.seatNumber(), event.language(), event.audience(), event.deviceId())
                 : event;
         store.record(stamped);
         return Map.of("ok", true);
@@ -54,5 +60,20 @@ public class SearchAnalyticsController {
             out.put(s.subtype(), s.recent());
         }
         return out;
+    }
+
+    @GetMapping("/events/seats")
+    public List<String> seats() {
+        return store.knownSeats();
+    }
+
+    @GetMapping("/events/seats/{seat}")
+    public List<SearchAnalyticsEvent> recentForSeat(@org.springframework.web.bind.annotation.PathVariable("seat") String seat) {
+        return store.recentForSeat(seat);
+    }
+
+    @GetMapping("/events/devices/{deviceId}")
+    public List<SearchAnalyticsEvent> recentForDevice(@org.springframework.web.bind.annotation.PathVariable("deviceId") String deviceId) {
+        return store.recentForDevice(deviceId);
     }
 }

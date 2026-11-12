@@ -231,6 +231,18 @@ export interface SearchEvent {
     query: string;
     resultCount: number;
     occurredAt: string;
+    /**
+     * Seat number this search originated from (e.g. "12A"). Null if
+     * the seatback didn't know its seat at the moment the event was
+     * posted (early-boot window before LruConfig loads).
+     */
+    seatNumber?: string | null;
+    /** UI language on the seatback at the time of search. */
+    language?: string | null;
+    /** Cabin class (FIRST/BUSINESS/ECONOMY). Null if the seatback doesn't track it. */
+    audience?: string | null;
+    /** Stable seatback identifier so the dashboard can group events before the seat number loads. */
+    deviceId?: string | null;
 }
 
 export interface SearchSubtypeSummary {
