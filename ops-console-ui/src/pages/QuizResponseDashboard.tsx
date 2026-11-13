@@ -200,10 +200,6 @@ export function QuizResponseDashboard() {
                                 <SearchPieChart
                                     data={pieData.map(d => ({ label: d.id, value: d.value }))}
                                     title=""
-                                    onSliceClick={(slice) => {
-                                        const clickedQuiz = pieData[sliceindex];
-                                        setQuizFilter(clickedQuiz.id);
-                                    }}
                                 />
                             ) : (
                                 <EmptyState text="No response data available." />
@@ -319,7 +315,7 @@ export function QuizResponseDashboard() {
                                             const summaryItem = summary.find(s => s.notificationId === r.notificationId);
                                             const responseText = (
                                                 r.optionId && (r.optionId === 'yes' || r.optionId === 'no')
-                                                    ? r.optionId.equals('yes') ? '🟢 Yes' : '🔴 No'
+                                                    ? r.optionId === 'yes' ? '🟢 Yes' : '🔴 No'
                                                     : r.optionId
                                                         ? summaryItem?.optionLabels?.[r.optionId] || r.optionId
                                                     : r.optionIds

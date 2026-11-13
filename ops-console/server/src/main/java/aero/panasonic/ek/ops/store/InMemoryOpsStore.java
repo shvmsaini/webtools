@@ -520,7 +520,7 @@ public class InMemoryOpsStore {
             // Map option IDs to labels for display
             Map<String, String> optionLabels = new LinkedHashMap<>();
             if (n.quiz() != null && n.quiz().options() != null) {
-                for (DomainModels.QuizOption opt : n.quiz().options()) {
+                for (var opt : n.quiz().options()) {
                     optionLabels.put(opt.id(), opt.label());
                 }
             }

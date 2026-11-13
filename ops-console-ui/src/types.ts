@@ -46,8 +46,8 @@ export interface QuizOption {
 }
 
 export interface QuizConfig {
-    type: QuizType;
-    question: string;
+    type?: QuizType;
+    question?: string;
     options?: QuizOption[] | null;
     minRating?: number | null;
     maxRating?: number | null;
@@ -124,7 +124,7 @@ export interface NotificationTemplate {
     category: Category;
     icon?: string;
     /** Payload to use as starting point */
-    payload: Omit<NotificationInput, 'id' | 'title' | 'body' | 'createdAt' | 'createdBy'>;
+    payload: Omit<NotificationInput, 'id' | 'title' | 'body' | 'createdAt' | 'createdBy' | 'category'> & { category?: Category };
 }
 
 // ---------- Shared sub-records ----------
@@ -311,11 +311,6 @@ export interface WallpaperPayload {
 }
 
 // ---------- Request payloads ----------
-
-export type NotificationInput = Omit<NotificationPayload, 'createdAt' | 'autoOpen'> & {
-    createdAt?: string;
-    autoOpen?: boolean;
-};
 
 export type FeatureFlagInput = Omit<FeatureFlagOverride, 'updatedAt'> & {
     updatedAt?: string;

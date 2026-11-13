@@ -27,7 +27,23 @@ import type {
     DeliveryChannel,
     NotificationInput,
     NotificationPayload,
+    NotificationTemplate,
+    QuizOption,
+    QuizType,
 } from '../types';
+
+// Quiz/yes-no response template
+const YES_NO_OPTIONS: QuizOption[] = [
+    { id: 'yes', label: 'Yes' },
+    { id: 'no', label: 'No' }
+];
+
+const QUICK_QUIZ_OPTIONS: QuizOption[] = [
+    { id: 'excellent', label: 'Excellent' },
+    { id: 'good', label: 'Good' },
+    { id: 'fair', label: 'Fair' },
+    { id: 'poor', label: 'Poor' }
+];
 
 const CATEGORIES: ReadonlyArray<{ value: Category; label: string }> = [
     { value: 'OPERATIONAL', label: 'Operational' },
@@ -37,6 +53,9 @@ const CATEGORIES: ReadonlyArray<{ value: Category; label: string }> = [
     { value: 'ANNOUNCEMENT', label: 'Announcement' },
     { value: 'PROMOTION', label: 'Promotion' },
     { value: 'CHAIRMAN_MESSAGE', label: 'Chairman Message' },
+    { value: 'QUIZ', label: 'Quiz' },
+    { value: 'SURVEY', label: 'Survey' },
+    { value: 'POLLERT', label: 'Poll/Simple Question' },
 ];
 
 const CHANNELS: ReadonlyArray<{ value: DeliveryChannel; label: string }> = [
@@ -81,32 +100,6 @@ function localInputToIso(local: string): string | null {
     // Append seconds + Z so the backend receives a full ISO-8601 UTC
     return new Date(local).toISOString();
 }
-
-// Quiz/yes-no response template
-const YES_NO_OPTIONS: QuizOption[] = [
-    { id: 'yes', label: 'Yes' },
-    { id: 'no', label: 'No' }
-];
-
-const QUICK_QUIZ_OPTIONS: QuizOption[] = [
-    { id: 'excellent', label: 'Excellent' },
-    { id: 'good', label: 'Good' },
-    { id: 'fair', label: 'Fair' },
-    { id: 'poor', label: 'Poor' }
-];
-
-const CATEGORIES: ReadonlyArray<{ value: Category; label: string }> = [
-    { value: 'OPERATIONAL', label: 'Operational' },
-    { value: 'GATE_CHANGE', label: 'Gate Change' },
-    { value: 'WEATHER', label: 'Weather' },
-    { value: 'ADVISORY', label: 'Advisory' },
-    { value: 'ANNOUNCEMENT', label: 'Announcement' },
-    { value: 'PROMOTION', label: 'Promotion' },
-    { value: 'CHAIRMAN_MESSAGE', label: 'Chairman Message' },
-    { value: 'QUIZ', label: 'Quiz' },
-    { value: 'SURVEY', label: 'Survey' },
-    { value: 'POLLERT', label: 'Poll/Simple Question' },
-];
 
 const QUIZ_TYPES: ReadonlyArray<{ value: QuizType; label: string }> = [
     { value: 'YES_NO', label: 'Yes/No' },
@@ -571,7 +564,6 @@ export function Notifications() {
                                                 }
                                             })}
                                             options={QUIZ_TYPES}
-                                            hint="Type of response to collect"
                                         />
                                         <TextField
                                             label="Question"
@@ -640,26 +632,28 @@ export function Notifications() {
                                         {draft.quiz?.type === 'RATING' && (
                                             <div className="rating-config" style={{ gridColumn: 'span 2' }}>
                                                 <div style={{ display: 'flex', gap: 'var(--sp-3)', alignItems: 'center' }}>
-                                                    <TextField
-                                                        label="Min Rating"
-                                                        type="number"
-                                                        value={String(draft.quiz.minRating ?? 1)}
-                                                        onChange={(v) => setDraft({
-                                                            ...draft,
-                                                            quiz: { ...draft.quiz, minRating: v ? parseInt(v) : 1 }
-                                                        })}
-                                                        style={{ flex: 1 }}
-                                                    />
-                                                    <TextField
-                                                        label="Max Rating"
-                                                        type="number"
-                                                        value={String(draft.quiz.maxRating ?? 5)}
-                                                        onChange={(v) => setDraft({
-                                                            ...draft,
-                                                            quiz: { ...draft.quiz, maxRating: v ? parseInt(v) : 5 }
-                                                        })}
-                                                        style={{ flex: 1 }}
-                                                    />
+                                                    <div style={{ flex: 1 }}>
+                                                        <TextField
+                                                            label="Min Rating"
+                                                            type="number"
+                                                            value={String(draft.quiz.minRating ?? 1)}
+                                                            onChange={(v) => setDraft({
+                                                                ...draft,
+                                                                quiz: { ...draft.quiz, minRating: v ? parseInt(v) : 1 }
+                                                            })}
+                                                        />
+                                                    </div>
+                                                    <div style={{ flex: 1 }}>
+                                                        <TextField
+                                                            label="Max Rating"
+                                                            type="number"
+                                                            value={String(draft.quiz.maxRating ?? 5)}
+                                                            onChange={(v) => setDraft({
+                                                                ...draft,
+                                                                quiz: { ...draft.quiz, maxRating: v ? parseInt(v) : 5 }
+                                                            })}
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <p style={{ marginTop: 'var(--sp-1)', fontSize: '12px', color: 'var(--color-text-faint)' }}>
                                                     Configure the rating scale (e.g., 1-5 stars)
