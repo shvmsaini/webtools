@@ -28,7 +28,7 @@ public final class DomainModels {
 
     /** Notification category — drives icon + colour in the intrusive overlay. */
     public enum Category {
-        OPERATIONAL, GATE_CHANGE, WEATHER, ADVISORY, ANNOUNCEMENT, PROMOTION, CHAIRMAN_MESSAGE
+        OPERATIONAL, GATE_CHANGE, WEATHER, ADVISORY, ANNOUNCEMENT, PROMOTION, CHAIRMAN_MESSAGE, QUIZ, SURVEY, POLLERT
     }
 
     public enum WebExperienceType {
