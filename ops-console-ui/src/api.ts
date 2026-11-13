@@ -23,6 +23,7 @@ import type {
     QuizResponseSummary,
     SearchEvent,
     SearchSubtypeSummary,
+    SeatPing,
     ThemePayload,
     WallpaperPayload,
     WebExperience,
@@ -326,5 +327,19 @@ export const api = {
         } catch {
             return false;
         }
+    },
+
+    /* ---------- Seat pings ---------- */
+
+    listSeats(): Promise<SeatPing[]> {
+        return this._fetch('/api/v1/seats');
+    },
+
+    getSeatCount(): Promise<{ count: number; searchAnalyticsSeats: number }> {
+        return this._fetch('/api/v1/seats/count');
+    },
+
+    clearSeats(): Promise<{ ok: boolean; message: string }> {
+        return this._fetch('/api/v1/seats', { method: 'POST' });
     },
 };

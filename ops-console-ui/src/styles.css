@@ -1022,6 +1022,36 @@ code {
 }
 
 /* =====================================================================
+ * Seat Ping Dashboard
+ * ===================================================================== */
+
+.stat {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+}
+.stat--large {
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+    color: var(--color-text);
+}
+.stat--success { color: var(--color-success); }
+.stat--warn { color: var(--color-warning); }
+.stat--info { color: var(--color-info); }
+.stat--danger { color: var(--color-danger); }
+
+.text-muted { color: var(--color-text-muted); }
+.text-faint { color: var(--color-text-faint); }
+
+.data-table tbody tr.row-success td {
+    background: var(--color-success-bg);
+}
+.data-table tbody tr.row-success:hover td {
+    background: var(--color-success-bg);
+    filter: brightness(1.05);
+}
+
+/* =====================================================================
  * Responsive
  * ===================================================================== */
 

@@ -6,6 +6,7 @@ import aero.panasonic.ek.ops.model.DomainModels.MediaWithdrawal;
 import aero.panasonic.ek.ops.model.DomainModels.MenuStateReport;
 import aero.panasonic.ek.ops.model.DomainModels.ThemePayload;
 import aero.panasonic.ek.ops.store.InMemoryOpsStore;
+import aero.panasonic.ek.ops.web.SeatPingController;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,9 +28,11 @@ import java.util.List;
 public class ConfigController {
 
     private final InMemoryOpsStore store;
+    private final SeatPingController seatPingController;
 
-    public ConfigController(InMemoryOpsStore store) {
+    public ConfigController(InMemoryOpsStore store, SeatPingController seatPingController) {
         this.store = store;
+        this.seatPingController = seatPingController;
     }
 
     // ---------- Feature flags ----------
@@ -146,7 +149,10 @@ public class ConfigController {
      */
     @PostMapping("/menu-state")
     public MenuStateReport upsertMenuState(@Valid @RequestBody MenuStateReport report) {
-        return store.saveMenuStateReport(report);
+        store.saveMenuStateReport(report);
+        // Also record this as a seat ping
+        seatPingController.recordPingFromMenuState(report);
+        return report;
     }
 
     @GetMapping("/menu-state")

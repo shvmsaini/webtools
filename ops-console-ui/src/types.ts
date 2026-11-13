@@ -369,3 +369,19 @@ export interface MenuStateReport {
     reportedAt: number;
     items: MenuStateItem[];
 }
+
+// ---------- Seat ping tracking ----------
+
+export interface SeatPing {
+    deviceId: string;
+    seatNumber: string;
+    airlineCode: string;
+    appVersion: string;
+    audience: string;
+    language: string;
+    firstSeenMs: number;
+    firstSeenFormatted: string;
+    lastSeenMs: number;
+    lastSeenFormatted: string;
+    timeAgo: string;
+}

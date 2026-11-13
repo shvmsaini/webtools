@@ -2,6 +2,7 @@ package aero.panasonic.ek.ops.web;
 
 import aero.panasonic.ek.ops.model.SearchAnalyticsEvent;
 import aero.panasonic.ek.ops.store.SearchAnalyticsStore;
+import aero.panasonic.ek.ops.web.SeatPingController;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,9 +31,11 @@ import java.util.Map;
 public class SearchAnalyticsController {
 
     private final SearchAnalyticsStore store;
+    private final SeatPingController seatPingController;
 
-    public SearchAnalyticsController(SearchAnalyticsStore store) {
+    public SearchAnalyticsController(SearchAnalyticsStore store, SeatPingController seatPingController) {
         this.store = store;
+        this.seatPingController = seatPingController;
     }
 
     @PostMapping("/events")
@@ -45,6 +48,8 @@ public class SearchAnalyticsController {
                     event.seatNumber(), event.language(), event.audience(), event.deviceId())
                 : event;
         store.record(stamped);
+        // Also record this as a seat ping
+        seatPingController.recordPingFromSearchEvent(stamped);
         return Map.of("ok", true);
     }
 
