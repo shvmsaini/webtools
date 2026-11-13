@@ -13,8 +13,6 @@ import { EmptyState, ErrorState, LoadingState } from '../components/ListColumn';
 import { SearchPieChart } from '../components/SearchPieChart';
 import type { QuizResponse, QuizResponseSummary } from '../types';
 
-export function QuizResponseDashboard() {
-
 const ALL_SEATS = '__all__';
 
 function formatTime(iso: string | null | undefined): string {

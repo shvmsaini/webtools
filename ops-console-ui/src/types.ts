@@ -78,7 +78,7 @@ export interface NotificationPayload {
     collectResponses?: boolean;
 }
 
-export interface NotificationInput = Omit<NotificationPayload, 'createdAt' | 'autoOpen'> & {
+export type NotificationInput = Omit<NotificationPayload, 'createdAt' | 'autoOpen'> & {
     createdAt?: string;
     autoOpen?: boolean;
 };
