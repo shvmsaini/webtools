@@ -111,9 +111,11 @@ const QUIZ_TYPES: ReadonlyArray<{ value: QuizType; label: string }> = [
 /** Predefined templates for quick notification creation */
 const TEMPLATES: NotificationTemplate[] = [
     {
-        id: 'gateway-change',
+        id: 'gate-change',
         label: '🛫 Gate Change Notification',
         category: 'GATE_CHANGE',
+        title: 'Gate Change',
+        body: 'Your gate has been changed. Please proceed to the new gate shown below.',
         icon: '📍',
         payload: {
             iconUrl: null,
@@ -130,6 +132,8 @@ const TEMPLATES: NotificationTemplate[] = [
         id: 'weather-delay',
         label: '⛈ Weather Advisory',
         category: 'WEATHER',
+        title: 'Weather Advisory',
+        body: 'There may be some turbulence ahead. Please return to your seat and keep your seatbelt fastened.',
         icon: '⛈',
         payload: {
             iconUrl: null,
@@ -146,6 +150,8 @@ const TEMPLATES: NotificationTemplate[] = [
         id: 'chairman-message',
         label: '🎙 Chairman Message',
         category: 'CHAIRMAN_MESSAGE',
+        title: 'Message from our Chairman',
+        body: 'A special message for our valued passengers.',
         icon: '🎙',
         payload: {
             iconUrl: null,
@@ -159,9 +165,47 @@ const TEMPLATES: NotificationTemplate[] = [
         }
     },
     {
+        id: 'promotion',
+        label: '🎁 Promotion',
+        category: 'PROMOTION',
+        title: 'Special Offer',
+        body: 'Take advantage of this exclusive offer available only today!',
+        icon: '🎁',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: false,
+        }
+    },
+    {
+        id: 'announcement',
+        label: '📢 General Announcement',
+        category: 'ANNOUNCEMENT',
+        title: 'Announcement',
+        body: 'Please pay attention to the following announcement.',
+        icon: '📢',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: false,
+        }
+    },
+    {
         id: 'yes-no-quick',
         label: '✅ Yes/No Question',
         category: 'POLLERT',
+        title: 'Quick Question',
+        body: 'We\'d love your feedback!',
         icon: '❓',
         payload: {
             iconUrl: null,
@@ -186,6 +230,8 @@ const TEMPLATES: NotificationTemplate[] = [
         id: 'quick-survey',
         label: '📊 Quick Satisfaction Survey',
         category: 'SURVEY',
+        title: 'Service Survey',
+        body: 'Please take a moment to rate your experience.',
         icon: '📊',
         payload: {
             iconUrl: null,
@@ -210,6 +256,8 @@ const TEMPLATES: NotificationTemplate[] = [
         id: 'rating-prompt',
         label: '⭐ Rating Prompt',
         category: 'QUIZ',
+        title: 'Rate Your Experience',
+        body: 'How was your experience with our service?',
         icon: '⭐',
         payload: {
             iconUrl: null,
@@ -230,6 +278,68 @@ const TEMPLATES: NotificationTemplate[] = [
                 requireResponse: false,
                 responseTimeoutSeconds: 60
             }
+        }
+    },
+    {
+        id: 'free-text-feedback',
+        label: '💬 Free Text Feedback',
+        category: 'SURVEY',
+        title: 'Share Your Thoughts',
+        body: 'We\'d love to hear from you!',
+        icon: '💬',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: true,
+            quiz: {
+                type: 'FREE_TEXT',
+                question: 'What would you like to share?',
+                options: [{ id: 'text', label: 'Your answer' }],
+                allowMultiple: false,
+                requireResponse: false,
+                responseTimeoutSeconds: 60
+            }
+        }
+    },
+    {
+        id: 'operational',
+        label: '⚠️ Operational Update',
+        category: 'OPERATIONAL',
+        title: 'Operational Update',
+        body: 'An update regarding your flight operations.',
+        icon: '⚠️',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: true,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: false,
+        }
+    },
+    {
+        id: 'advisory',
+        label: 'ℹ️ Travel Advisory',
+        category: 'ADVISORY',
+        title: 'Travel Advisory',
+        body: 'Important information for your travel.',
+        icon: 'ℹ️',
+        payload: {
+            iconUrl: null,
+            ctaUrl: null,
+            autoOpen: true,
+            mandatory: false,
+            channel: 'POLL',
+            targeting: emptyTargeting(),
+            expiresAt: null,
+            collectResponses: false,
         }
     }
 ];
@@ -418,8 +528,8 @@ export function Notifications() {
                                         const newDraft: NotificationInput = {
                                             ...tmpl.payload,
                                             id: `notif-${Date.now()}`,
-                                            title: '',
-                                            body: '',
+                                            title: tmpl.title ?? '',
+                                            body: tmpl.body ?? '',
                                             category: tmpl.category,
                                             createdBy: api.operator,
                                             createdAt: nowIso(),

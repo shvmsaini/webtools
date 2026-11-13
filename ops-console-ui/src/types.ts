@@ -123,6 +123,10 @@ export interface NotificationTemplate {
     label: string;
     category: Category;
     icon?: string;
+    /** Suggested title — applied to the draft when this template is chosen. */
+    title?: string;
+    /** Suggested body — applied to the draft when this template is chosen. */
+    body?: string;
     /** Payload to use as starting point */
     payload: Omit<NotificationInput, 'id' | 'title' | 'body' | 'createdAt' | 'createdBy' | 'category'> & { category?: Category };
 }
