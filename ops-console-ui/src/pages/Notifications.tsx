@@ -218,7 +218,7 @@ const TEMPLATES: NotificationTemplate[] = [
             collectResponses: true,
             quiz: {
                 type: 'YES_NO',
-                question: 'Your question here',
+                question: 'Are you enjoying the in-flight entertainment?',
                 options: YES_NO_OPTIONS,
                 allowMultiple: false,
                 requireResponse: false,
@@ -244,7 +244,7 @@ const TEMPLATES: NotificationTemplate[] = [
             collectResponses: true,
             quiz: {
                 type: 'MULTIPLE_CHOICE',
-                question: 'How satisfied are you with the service?',
+                question: 'How would you rate your overall flight experience?',
                 options: QUICK_QUIZ_OPTIONS,
                 allowMultiple: false,
                 requireResponse: false,
@@ -270,7 +270,7 @@ const TEMPLATES: NotificationTemplate[] = [
             collectResponses: true,
             quiz: {
                 type: 'RATING',
-                question: 'Rate our new feature (1-5)',
+                question: 'How satisfied are you with your flight? (1-5 stars)',
                 options: null,
                 minRating: 1,
                 maxRating: 5,
@@ -298,11 +298,11 @@ const TEMPLATES: NotificationTemplate[] = [
             collectResponses: true,
             quiz: {
                 type: 'FREE_TEXT',
-                question: 'What would you like to share?',
-                options: [{ id: 'text', label: 'Your answer' }],
+                question: 'What could we do to improve your next flight?',
+                options: [{ id: 'text', label: 'Your feedback' }],
                 allowMultiple: false,
                 requireResponse: false,
-                responseTimeoutSeconds: 60
+                responseTimeoutSeconds: 120
             }
         }
     },
