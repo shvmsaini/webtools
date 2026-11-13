@@ -384,4 +384,13 @@ export interface SeatPing {
     lastSeenMs: number;
     lastSeenFormatted: string;
     timeAgo: string;
+    pingCount: number;
+}
+
+export interface PingEvent {
+    deviceId: string;
+    seatNumber: string;
+    timestampMs: number;
+    timestamp: string;
+    timeAgo: string;
 }

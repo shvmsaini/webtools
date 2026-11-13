@@ -19,6 +19,7 @@ import type {
     NotificationInput,
     NotificationPayload,
     OperationsBundle,
+    PingEvent,
     QuizResponse,
     QuizResponseSummary,
     SearchEvent,
@@ -333,6 +334,10 @@ export const api = {
 
     listSeats(): Promise<SeatPing[]> {
         return this._fetch('/api/v1/seats');
+    },
+
+    getRecentPings(): Promise<PingEvent[]> {
+        return this._fetch('/api/v1/seats/recent');
     },
 
     getSeatCount(): Promise<{ count: number; searchAnalyticsSeats: number }> {

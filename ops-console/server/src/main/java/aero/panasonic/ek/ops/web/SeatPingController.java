@@ -60,6 +60,16 @@ public class SeatPingController {
     }
 
     /**
+     * Get the recent ping events feed (most recent first).
+     * Each ping from any seat is appended here so operators can see
+     * a live stream of seat activity.
+     */
+    @GetMapping("/recent")
+    public List<SeatPingStore.PingEvent> recentPings() {
+        return seatPingStore.getRecentPings();
+    }
+
+    /**
      * Get count of known seats.
      */
     @GetMapping("/count")

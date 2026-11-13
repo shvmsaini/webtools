@@ -10,13 +10,15 @@
  * - Report APK update status
  *
  * The dashboard shows seat number, device ID, app version, when they
- * first/last connected, and the "time ago" for quick visibility.
+ * first/last connected, and the "last ping" timestamp with relative
+ * time for quick visibility. A "Recent Pings" feed shows the most
+ * recent ping events across all seats.
  */
 
 import { useEffect, useState } from 'react';
 import { api, ApiError } from '../api';
 import { EmptyState, ErrorState, LoadingState } from '../components/ListColumn';
-import type { SeatPing } from '../types';
+import type { PingEvent, SeatPing } from '../types';
 
 function formatTime(iso: string | null | undefined): string {
     if (!iso) return '-';
@@ -42,19 +44,25 @@ function TimeAgo({ timestamp }: { timestamp: number | null | undefined }) {
 
 export function SeatPingDashboard() {
     const [seats, setSeats] = useState<SeatPing[]>([]);
+    const [recentPings, setRecentPings] = useState<PingEvent[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
     const refresh = async () => {
         setError(null);
         try {
-            const data = await api.listSeats();
-            setSeats(data);
+            const [seatsData, pingsData] = await Promise.all([
+                api.listSeats(),
+                api.getRecentPings(),
+            ]);
+            setSeats(seatsData);
+            setRecentPings(pingsData);
             setLastUpdate(new Date());
         } catch (e) {
             const msg = e instanceof ApiError ? e.message : String(e);
             setError(msg);
             setSeats([]);
+            setRecentPings([]);
         }
     };
 
@@ -77,6 +85,7 @@ export function SeatPingDashboard() {
     const totalSeats = seats.length;
     const activeInLastMinute = seats.filter(s => (Date.now() - (s.lastSeenMs ?? 0)) < 60000).length;
     const activeInLastHour = seats.filter(s => (Date.now() - (s.lastSeenMs ?? 0)) < 3600000).length;
+    const lastPingOverall = seats.length > 0 ? Math.max(...seats.map(s => s.lastSeenMs ?? 0)) : 0;
 
     return (
         <section className="tab-panel active">
@@ -121,6 +130,19 @@ export function SeatPingDashboard() {
                             <h3>Inactive</h3>
                             <p className="stat stat--large stat--warn">{totalSeats - activeInLastHour}</p>
                         </div>
+                        <div className="config-card">
+                            <h3>Last Ping (Fleet-wide)</h3>
+                            <p className="stat stat--large">
+                                {lastPingOverall > 0
+                                    ? <TimeAgo timestamp={lastPingOverall} />
+                                    : <span className="text-muted">-</span>}
+                            </p>
+                            {lastPingOverall > 0 && (
+                                <p className="text-faint" style={{ fontSize: 'var(--fs-xs)', marginTop: 'var(--sp-1)' }}>
+                                    {formatTime(new Date(lastPingOverall).toISOString())}
+                                </p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Seat table */}
@@ -140,18 +162,19 @@ export function SeatPingDashboard() {
                                             <th>Audience</th>
                                             <th>Language</th>
                                             <th>First Seen</th>
-                                            <th>Last Seen</th>
-                                            <th>Activity</th>
+                                            <th>Last Ping</th>
+                                            <th>Last Ping (Relative)</th>
+                                            <th>Ping Count</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {seats.map((seat) => {
-                                            const isRecent = (Date.now() - (seat.lastSeenMs ?? 0)) < 60000;
+                                            const secondsSince = (Date.now() - (seat.lastSeenMs ?? 0)) / 1000;
+                                            const isRecent = secondsSince < 60;
+                                            const isStale = secondsSince >= 3600;
+                                            const rowClass = isRecent ? 'row-success' : (isStale ? 'row-warn' : '');
                                             return (
-                                                <tr
-                                                    key={seat.deviceId}
-                                                    className={isRecent ? 'row-success' : ''}
-                                                >
+                                                <tr key={seat.deviceId} className={rowClass}>
                                                     <td>
                                                         <strong>
                                                             {seat.seatNumber && seat.seatNumber !== '-'
@@ -174,12 +197,62 @@ export function SeatPingDashboard() {
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <span className="text-muted" title={seat.lastSeenFormatted}>
+                                                        <strong title={seat.lastSeenFormatted}>
                                                             {formatTime(seat.lastSeenFormatted)}
-                                                        </span>
+                                                        </strong>
                                                     </td>
                                                     <td>
                                                         <TimeAgo timestamp={seat.lastSeenMs} />
+                                                    </td>
+                                                    <td>
+                                                        <span className="badge badge--ok">{seat.pingCount ?? 0}</span>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Recent pings feed */}
+                    <div className="config-card">
+                        <h3>Recent Pings</h3>
+                        {recentPings.length === 0 ? (
+                            <EmptyState text="No pings yet. Every seat ping will appear here in real time." />
+                        ) : (
+                            <div style={{ overflowX: 'auto', maxHeight: '300px', overflowY: 'auto' }}>
+                                <table className="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>When</th>
+                                            <th>Time Ago</th>
+                                            <th>Seat</th>
+                                            <th>Device ID</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recentPings.map((ping, i) => {
+                                            const secondsSince = (Date.now() - (ping.timestampMs ?? 0)) / 1000;
+                                            const isRecent = secondsSince < 60;
+                                            return (
+                                                <tr key={`${ping.deviceId}-${ping.timestampMs}-${i}`} className={isRecent ? 'row-success' : ''}>
+                                                    <td>
+                                                        <strong>{formatTime(ping.timestamp)}</strong>
+                                                    </td>
+                                                    <td>
+                                                        <TimeAgo timestamp={ping.timestampMs} />
+                                                    </td>
+                                                    <td>
+                                                        <strong>
+                                                            {ping.seatNumber && ping.seatNumber !== '-'
+                                                                ? ping.seatNumber
+                                                                : <span className="text-muted">-</span>}
+                                                        </strong>
+                                                    </td>
+                                                    <td>
+                                                        <code>{ping.deviceId}</code>
                                                     </td>
                                                 </tr>
                                             );
